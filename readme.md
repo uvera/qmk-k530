@@ -2,6 +2,7 @@
 
 K530
 
+**Keymap features (DIP switches, panel LEDs, layer mask, reboot, bootloader):** see [FEATURES.md](FEATURES.md).
 
 Config files for K530 for [SonixQMK](https://github.com/SonixQMK/qmk_firmware) for development branch.
 To install, follow instructions on [https://sonixqmk.github.io//SonixDocs/install/](https://sonixqmk.github.io//SonixDocs/install/)

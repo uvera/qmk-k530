@@ -49,69 +49,97 @@ short layer_MASK = 0;
 enum layer_names { BASE, FN1, FN2, FN3, FN4 };
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-    [BASE] = LAYOUT_60_ansi(/* Base */
-                            KC_ESC, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7, KC_8, KC_9, KC_0, KC_MINS, KC_EQL, KC_BSPC, KC_TAB, KC_Q, KC_W, KC_E, KC_R, KC_T, KC_Y, KC_U, KC_I, KC_O, KC_P, KC_LBRC, KC_RBRC, KC_BSLS, LT(FN1, KC_CAPS), KC_A, KC_S, KC_D, KC_F, KC_G, KC_H, KC_J, KC_K, KC_L, KC_SCLN, KC_QUOT, KC_ENT, KC_LSFT, KC_Z, KC_X, KC_C, KC_V, KC_B, KC_N, KC_M, KC_COMM, KC_DOT, KC_SLSH, RSFT_T(KC_UP), KC_LCTL, KC_LGUI, KC_LALT, KC_SPC, KC_RALT, LT(FN1, KC_LEFT), LT(FN2, KC_DOWN), RCTL_T(KC_RGHT)),
     /*
-     * Layer FN1
+     * Layer BASE
+     * ,-----------------------------------------------------------------------------------------.
+     * | Esc |  1  |  2  |  3  |  4  |  5  |  6  |  7  |  8  |  9  |  0  |  -  |  =  |   Bksp   |
+     * |-----------------------------------------------------------------------------------------+
+     * | Tab    |  Q  |  W  |  E  |  R  |  T  |  Y  |  U  |  I  |  O  |  P  |  [  |  ]  |   \    |
+     * |-----------------------------------------------------------------------------------------+
+     * | Caps    |  A  |  S  |  D  |  F  |  G  |  H  |  J  |  K  |  L  |  ;  |  '  |    Enter    |
+     * |-----------------------------------------------------------------------------------------+
+     * | Shift      |  Z  |  X  |  C  |  V  |  B  |  N  |  M  |  ,  |  .  |  /  |    Up/Shift   |
+     * |-----------------------------------------------------------------------------------------+
+     * | Ctrl  | Win  |  Alt  |               space             | Alt  | Left/FN1 | Down/FN2 | Ctrl  |
+     * \-----------------------------------------------------------------------------------------/
+     */
+    [BASE] = LAYOUT_60_ansi(
+        KC_ESC,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,    KC_6,    KC_7,    KC_8,    KC_9,    KC_0,    KC_MINS, KC_EQL,  KC_BSPC,
+        KC_TAB,  KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,    KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,    KC_LBRC, KC_RBRC, KC_BSLS,
+        LT(FN1, KC_CAPS), KC_A,   KC_S,    KC_D,    KC_F,    KC_G,    KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN, KC_QUOT, KC_ENT,
+        KC_LSFT, KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT, KC_SLSH, RSFT_T(KC_UP),
+        KC_LCTL, KC_LGUI, KC_LALT, KC_SPC,  KC_RALT, LT(FN1, KC_LEFT), LT(FN2, KC_DOWN), RCTL_T(KC_RGHT)
+    ),
+    /*
+     * Layer FN1 (hold Caps or hold Down)
      * ,-----------------------------------------------------------------------------------------.
      * |  `  |  F1 |  F2 |  F3 |  F4 |  F5 |  F6 |  F7 |  F8 |  F9 | F10 | F11 | F12 |  DELETE   |
      * |-----------------------------------------------------------------------------------------+
-     * | Tab    |  q  | UP  |  e  |  r  |  t  |  y  |  u  |  i  |  o  | PS | HOME | END |   \    |
+     * | Tab    |  q  | UP  |  e  |  r  |  t  |  y  |  u  |  i  |  o  | PS  | HOME | END |   \    |
      * |-----------------------------------------------------------------------------------------+
-     * | Esc     |LEFT |DOWN |RIGHT|  f  |  g  |  h  |  j  |  k  |  l  | PGUP|PGDN |    Enter    |
+     * | Caps    |LEFT |DOWN |RIGHT|  f  |  g  |  h  |  j  |  k  |  l  | PGUP| PGDN |    Enter    |
      * |-----------------------------------------------------------------------------------------+
-     * | Shift      |V-UP |V-DWN|MUTE |  v  |  b  |  n  |  m  |  ,  |INSRT| DEL |    Shift       |
+     * | Shift      |V-UP |V-DWN|MUTE |  v  |  b  |  n  |  m  |  ,  | INS | DEL  |    Shift       |
      * |-----------------------------------------------------------------------------------------+
-     * | Ctrl  |  L1   |  Alt  |               space             |  Alt  |  FN1  |  FN2  | Ctrl  |
+     * | Ctrl  | Win  |  Alt  |               space             | Alt  |  FN1  |  FN2  | Boot   |
      * \-----------------------------------------------------------------------------------------/
-     *
      */
-    [FN1] = LAYOUT_60_ansi(/* FN1 */
-                           KC_GRV, KC_F1, KC_F2, KC_F3, KC_F4, KC_F5, KC_F6, KC_F7, KC_F8, KC_F9, KC_F10, KC_F11, KC_F12, KC_DEL, _______, _______, KC_UP, _______, _______, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END, _______, _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______, _______, KC_VOLU, KC_VOLD, KC_MUTE, _______, _______, _______, _______, _______, KC_INS, KC_DEL, _______, _______, _______, _______, _______, _______, _______, MO(FN2), QK_BOOTLOADER),
+    [FN1] = LAYOUT_60_ansi(
+        KC_GRV,  KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,  KC_F11,  KC_F12,  KC_DEL,
+        _______, _______, KC_UP,   _______, _______, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
+        _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
+        _______, KC_VOLU, KC_VOLD, KC_MUTE, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
+        _______, _______, _______, _______, _______, _______, MO(FN2), QK_BOOTLOADER
+    ),
     /*
-     * Layer FN2
+     * Layer FN2 (RGB + layer mask, reboot, bootloader)
      * ,-----------------------------------------------------------------------------------------.
-     * |  ~  | BT1 | BT2 | BT3 | BT4 |  F5 |  F6 | F7 | F8 | MOD | TOG | BRI- | BRI+ |    Bksp   |
+     * |    |    |    |    |    |    |    |    |    |MOD+ |HUE+ |VAL+ |SPD+ |                    |
      * |-----------------------------------------------------------------------------------------+
-     * | Tab    |  q  | UP  |  e  |  r  |  t  |  y  |  u  |  i  |  o  | PS | HOME | END |   \    |
+     * | FN2  |MASK | UP  |    |REBOOT|    |    |    |    |    | PS  |HOME | END |                |
      * |-----------------------------------------------------------------------------------------+
-     * | Esc     |LEFT |DOWN |RIGHT|  f  |  g  |  h  |  j  |  k  |  l  | PGUP|PGDN |    Enter    |
+     * |        |LEFT |DOWN |RIGHT|    |    |    |    |    |    | PGUP| PGDN |    Enter          |
      * |-----------------------------------------------------------------------------------------+
-     * | Shift      |  z  |  x  |  c  |  v  |  b  |  n  |  m  |  ,  |INSRT| DEL |    Shift       |
+     * | Shift      |    |    |    |    |    |    |    |    |    | INS | DEL  |    Shift         |
      * |-----------------------------------------------------------------------------------------+
-     * | Ctrl  |  L1   |  Alt  |               space             |  Alt  |  FN1  |  FN2  | Ctrl  |
+     * | Ctrl  | Win  |  Alt  |               space             | Alt  |  FN1  |  FN2  | Boot   |
      * \-----------------------------------------------------------------------------------------/
-     *
      */
-    [FN2] = LAYOUT_60_ansi(/* FN2 */
-                           _______, _______, _______, _______, _______, _______, _______, _______, _______, RGB_MODE_FORWARD, RGB_HUI, RGB_VAI, RGB_SPI, _______, MO(FN2), QK_LAYER_MASK, KC_UP, _______, MY_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END, _______, _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS, KC_DEL, _______, _______, _______, _______, _______, _______, MO(FN1), MO(FN2), QK_BOOTLOADER),
-    [FN3] = LAYOUT_60_ansi(/* FN2 */
-                           _______, _______, _______, _______, _______, _______, _______, _______, _______, RGB_MODE_FORWARD, RGB_HUI, RGB_VAI, RGB_SPI, _______, MO(FN2), _______, KC_UP, _______, MY_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END, _______, _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS, KC_DEL, _______, _______, _______, _______, _______, _______, MO(FN1), MO(FN2), QK_BOOTLOADER),
+    [FN2] = LAYOUT_60_ansi(
+        _______, _______, _______, _______, _______, _______, _______, _______, _______, RM_NEXT, RM_HUEU, RM_VALU, RM_SPDU, _______,
+        MO(FN2), QK_LAYER_MASK, KC_UP, _______, MY_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
+        _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
+        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
+        _______, _______, _______, _______, _______, MO(FN1), MO(FN2), QK_BOOTLOADER
+    ),
+    /*
+     * Layer FN3 (same as FN2 but no layer-mask key; used for indicator logic)
+     * ,-----------------------------------------------------------------------------------------.
+     * |    |    |    |    |    |    |    |    |    |MOD+ |HUE+ |VAL+ |SPD+ |                    |
+     * |-----------------------------------------------------------------------------------------+
+     * | FN2  |    | UP  |    |REBOOT|    |    |    |    |    | PS  |HOME | END |                |
+     * |-----------------------------------------------------------------------------------------+
+     * |        |LEFT |DOWN |RIGHT|    |    |    |    |    |    | PGUP| PGDN |    Enter          |
+     * |-----------------------------------------------------------------------------------------+
+     * | Shift      |    |    |    |    |    |    |    |    |    | INS | DEL  |    Shift         |
+     * |-----------------------------------------------------------------------------------------+
+     * | Ctrl  | Win  |  Alt  |               space             | Alt  |  FN1  |  FN2  | Boot   |
+     * \-----------------------------------------------------------------------------------------/
+     */
+    [FN3] = LAYOUT_60_ansi(
+        _______, _______, _______, _______, _______, _______, _______, _______, _______, RM_NEXT, RM_HUEU, RM_VALU, RM_SPDU, _______,
+        MO(FN2), _______, KC_UP,   _______, MY_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
+        _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
+        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
+        _______, _______, _______, _______, _______, MO(FN1), MO(FN2), QK_BOOTLOADER
+    ),
 };
 
 void restartKBBB(void) {
     clear_keyboard();
-
     rgb_matrix_disable();
-#if defined(MIDI_ENABLE) && defined(MIDI_BASIC)
-    process_midi_all_notes_off();
-#endif
-#ifdef AUDIO_ENABLE
-#    ifndef NO_MUSIC_MODE
-    music_all_notes_off();
-#    endif
-    uint16_t timer_start = timer_read();
-    PLAY_SONG(goodbye_song);
-    shutdown_user();
-    while (timer_elapsed(timer_start) < 250) wait_ms(1);
-    stop_all_notes();
-#else
-    shutdown_user();
+    shutdown_user(false);
     wait_ms(100);
-#endif
-#ifdef HAPTIC_ENABLE
-    haptic_shutdown();
-#endif
     NVIC_SystemReset();
 }
 
@@ -337,7 +365,7 @@ int setIndicator(uint8_t layer) {
 
     return 1;
 }
-void changeLayerMasK(bool reverse) {
+void changeLayerMask(bool reverse) {
     if (reverse) {
         // First temporarily canceling both shifts so that
         if (layer_MASK == 1) {
@@ -352,7 +380,9 @@ void changeLayerMasK(bool reverse) {
     if (layer_MASK > 0) {
         maskLayer(getLayer());
     } else {
-        maskLayer(default_layer_state);
+        /* Restore all key LEDs to normal: use BASE layer index, not default_layer_state (bitmask).
+         * Passing default_layer_state (e.g. 1) was wrongly masking by FN1, leaving many keys off. */
+        maskLayer(biton32(default_layer_state));
     }
 }
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
@@ -368,7 +398,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             break;
         case QK_LAYER_MASK:
             if (record->event.pressed) {
-                changeLayerMasK(mod_state & MOD_MASK_SHIFT);
+                changeLayerMask(mod_state & MOD_MASK_SHIFT);
                 // Detect the activation of either shift keys
             }
             return false;
@@ -377,7 +407,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
         case QK_LAYER_NO_MASK:
             if (record->event.pressed) {
-                changeLayerMasK(~mod_state & MOD_MASK_SHIFT);
+                changeLayerMask(~mod_state & MOD_MASK_SHIFT);
                 // Detect the activation of either shift keys
             }
             return false;
@@ -394,9 +424,34 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return true;  // Process all other keycodes normally
     }
 }
-// void rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
-//
-// }
+bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
+    /* Apply layer indicator and panel LEDs every frame so the animation doesn't overwrite them */
+    if (INDICATOR_KEY >= led_min && INDICATOR_KEY <= led_max) {
+        uint8_t layer = get_highest_layer(layer_state);
+        if (layer == 0) {
+            layer = biton32(default_layer_state);
+        }
+        switch (layer) {
+            case FN1:
+                rgb_matrix_set_color(INDICATOR_KEY, 255, 0, 0);
+                break;
+            case FN2:
+                rgb_matrix_set_color(INDICATOR_KEY, 0, 255, 0);
+                break;
+            case FN3:
+                rgb_matrix_set_color(INDICATOR_KEY, 0, 0, 255);
+                break;
+            default:
+                /* BASE: leave to effect (no Caps Lock indicator - was lighting battery LED on toggle) */
+                break;
+        }
+    }
+    if ((BATTERY_LED >= led_min && BATTERY_LED <= led_max) || (BLUETOOTH_LED >= led_min && BLUETOOTH_LED <= led_max)) {
+        panelIndicators();
+    }
+    return true;
+}
+
 layer_state_t layer_state_set_user(layer_state_t state) {
     uint8_t layer = get_highest_layer(state);
     if (layer == 0) {
