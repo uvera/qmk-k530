@@ -77,14 +77,14 @@ These keycodes are handled in the keymap (e.g. in `process_record_user()`).
 | Keycode | Default position | What it does |
 |---------|------------------|----------------|
 | **MY_REBOOT** (default) / **QK_REBOOT** (VIA) | **FN2**, key **above Tab** (same column as Q) | **Software reboot** – restarts the MCU, does **not** enter bootloader. |
-| **QK_LAYER_MASK** (default) / **CS_LAYER_MASK_F** (VIA) | **FN2**, key at **Q** | **Layer mask on.** RGB then lights only keys that do something on the current layer. **Shift + same key** = layer mask off. |
-| **QK_LAYER_NO_MASK** / **CS_LAYER_MASK_B** (VIA) | Not on default keymap | Same as “layer mask off” (you can bind it in VIA if you like). |
+| **QK_LAYER_MASK** (default) / **CS_LAYER_MASK_F** (VIA) | **FN2**, key at **Q** | **Toggle layer mask.** Press once = mask on (RGB lights only keys that do something on the current layer). Press again = mask off. |
+| **QK_LAYER_NO_MASK** / **CS_LAYER_MASK_B** (VIA) | Not on default keymap | Turn layer mask off (you can bind it in VIA if you like). |
 | **QK_TOGGLE_PANEL_LED** / **RD_PANEL_TG** (VIA) | Not bound by default | **Toggle panel LEDs** – turns the Bluetooth and Battery LEDs on or off; key LEDs unchanged. |
 
 **In practice (default keymap):**
 
 - **Reboot:** FN2 → key above Q.
-- **Layer mask on:** FN2 → **Q**. **Layer mask off:** FN2 → **Shift + Q**.
+- **Layer mask:** FN2 → **Q** toggles mask on/off (no Shift needed).
 
 ---
 
@@ -98,8 +98,7 @@ When **layer mask is on**:
 
 So you get a clear “preview” of which keys have an action on the layer you’re on.
 
-- **Turn on:** FN2 → **Q** (QK_LAYER_MASK / CS_LAYER_MASK_F).
-- **Turn off:** FN2 → **Shift + Q** (or use CS_LAYER_MASK_B in VIA).
+- **Toggle:** FN2 → **Q** (QK_LAYER_MASK / CS_LAYER_MASK_F). Same key turns the mask on and off. Optionally bind CS_LAYER_MASK_B in VIA for “mask off only”.
 
 ---
 
@@ -126,7 +125,7 @@ The **VIA** keymap does the **same things** as the default keymap but uses keyco
 | Default keymap | VIA keymap | Function |
 |----------------|------------|----------|
 | MY_REBOOT | QK_REBOOT | Reboot |
-| QK_LAYER_MASK | CS_LAYER_MASK_F | Layer mask on/off (Shift = off) |
+| QK_LAYER_MASK | CS_LAYER_MASK_F | Layer mask toggle (FN2+Q) |
 | (none) | CS_LAYER_MASK_B | Layer mask off only |
 | QK_TOGGLE_PANEL_LED | RD_PANEL_TG | Panel LED toggle |
 
@@ -140,8 +139,7 @@ On **FN2** in VIA: **CS_LAYER_MASK_F** at “Q”, **QK_REBOOT** above Tab. **RD
 |------|-----|
 | **Enter bootloader** | Hold **Caps** or **Down**, then press **Right Ctrl**. |
 | **Reboot (no bootloader)** | FN2 → key **above Q** (MY_REBOOT / QK_REBOOT). |
-| **Layer mask on** | FN2 → **Q** (QK_LAYER_MASK / CS_LAYER_MASK_F). |
-| **Layer mask off** | FN2 → **Shift + Q** (or CS_LAYER_MASK_B in VIA). |
+| **Layer mask on/off** | FN2 → **Q** toggles (QK_LAYER_MASK / CS_LAYER_MASK_F). Or bind CS_LAYER_MASK_B for “off only”. |
 | **Panel LEDs on/off** | Bind QK_TOGGLE_PANEL_LED or RD_PANEL_TG to a key and press it. |
 | **Win vs Mac / Cable vs BT** | Use the **DIP switches** on the board. |
 | **Indicator LED** | Shows current layer (red/green/blue); automatic. |
