@@ -109,7 +109,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______, _______, _______, _______, _______, _______, _______, _______, _______, RM_NEXT, RM_HUEU, RM_VALU, RM_SPDU, _______,
         MO(FN2), QK_LAYER_MASK, KC_UP, _______, MY_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
         _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
-        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
+        _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
         _______, _______, _______, _______, _______, MO(FN1), MO(FN2), QK_BOOTLOADER
     ),
     /*
@@ -130,7 +130,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______, _______, _______, _______, _______, _______, _______, _______, _______, RM_NEXT, RM_HUEU, RM_VALU, RM_SPDU, _______,
         MO(FN2), _______, KC_UP,   _______, MY_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
         _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
-        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
+        _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
         _______, _______, _______, _______, _______, MO(FN1), MO(FN2), QK_BOOTLOADER
     ),
 };
@@ -386,8 +386,6 @@ void changeLayerMask(bool reverse) {
     }
 }
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    uint8_t mod_state = get_mods();
-
     switch (keycode) {
         case MY_REBOOT:
 
@@ -398,17 +396,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             break;
         case QK_LAYER_MASK:
             if (record->event.pressed) {
-                changeLayerMask(mod_state & MOD_MASK_SHIFT);
-                // Detect the activation of either shift keys
+                /* Toggle: if mask is on, turn off; if off, turn on */
+                changeLayerMask(layer_MASK == 1);
             }
             return false;
-
             break;
 
         case QK_LAYER_NO_MASK:
             if (record->event.pressed) {
-                changeLayerMask(~mod_state & MOD_MASK_SHIFT);
-                // Detect the activation of either shift keys
+                changeLayerMask(true);  /* Force mask off */
             }
             return false;
             break;

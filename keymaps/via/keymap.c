@@ -440,22 +440,18 @@ void changeLayerMask(bool reverse) {
     }
 }
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    uint8_t mod_state = get_mods();
-
     switch (keycode) {
         case CS_LAYER_MASK_F:
             if (record->event.pressed) {
-                changeLayerMask(mod_state & MOD_MASK_SHIFT);
-                // Detect the activation of either shift keys
+                /* Toggle: if mask is on, turn off; if off, turn on */
+                changeLayerMask(layer_MASK == 1);
             }
             return false;
-
             break;
 
         case CS_LAYER_MASK_B:
             if (record->event.pressed) {
-                changeLayerMask(~mod_state & MOD_MASK_SHIFT);
-                // Detect the activation of either shift keys
+                changeLayerMask(true);  /* Force mask off */
             }
             return false;
             break;
