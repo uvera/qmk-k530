@@ -106,11 +106,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
      * \-----------------------------------------------------------------------------------------/
      */
     [FN2] = LAYOUT_60_ansi(
-        _______, _______, _______, _______, _______, RM_NEXT, RM_PREV, RM_HUEU, RM_HUED, RM_VALU, RM_VALD, RM_SPDU, RM_SPDD, _______,
+        _______, _______, _______, _______, _______, RM_NEXT, RM_PREV, RM_HUEU, RM_HUED, RM_VALU, RM_VALD, RM_SPDU, RM_SPDD, MS_BTN2,
         MO(FN2), QK_LAYER_MASK, KC_UP, _______, MY_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
         _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
         _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
-        _______, _______, _______, _______, _______, MO(FN1), MO(FN2), QK_BOOTLOADER
+        _______, _______, _______, MS_BTN1, _______, MO(FN1), MO(FN2), QK_BOOTLOADER
     ),
     /*
      * Layer FN3 (same as FN2 but no layer-mask key; used for indicator logic)
