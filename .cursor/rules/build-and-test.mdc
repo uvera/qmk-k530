@@ -1,0 +1,19 @@
+---
+description: Build and test K530 firmware after keymap or config changes
+alwaysApply: true
+---
+
+# K530 – Build and test
+
+This keyboard lives under **qmk_firmware/keyboards/redragon/k530**. After changing keymaps, config, or rules, verify the build.
+
+## Test the build
+
+From the **qmk_firmware** root (parent of `keyboards/`), run:
+
+```bash
+qmk compile -kb redragon/k530 -km default
+qmk compile -kb redragon/k530 -km via
+```
+
+Run both so default and VIA keymaps compile. Fix any compile errors before considering the change done.
