@@ -18,12 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define INDICATOR_KEY 28
 #define BLUETOOTH_LED 62
 #define BATTERY_LED 61
-// Each layer gets a name for readability, which is then used in the keymap matrix below.
-// The underscores don't mean anything - you can have a layer called STUFF or any other name.
-// Layer names don't all need to be of the same length, obviously, and you can also skip them
-// entirely and just use numbers.
-//
-//
 #define USER00 SAFE_RANGE -64
 #ifdef OS_DETECTION_ENABLE
 #    include "os_detection.h"
@@ -42,7 +36,7 @@ bool BLUETOOTHSTATE = true;
 bool panelLedEnable = true;
 
 short layer_MASK = 0;
-enum layer_names { BASE, FN1, FN2, FN3, FN4 };
+enum layer_names { BASE, FN1, FN2, FN3 };
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     /*
@@ -131,14 +125,6 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
 };
 
-void restartKBBB(void) {
-    clear_keyboard();
-    rgb_matrix_disable();
-    shutdown_user(false);
-    wait_ms(100);
-    NVIC_SystemReset();
-}
-
 #ifdef OS_DETECTION_ENABLE
 
 os_variant_t previous_os = OS_UNSURE;
@@ -152,16 +138,8 @@ COMPOSE_LED = (1<< 4)
 };
 
 unsigned char ledState = 0;
-// unsigned char caps_lock=0;
-// unsigned char num_lock=0;
-// unsigned char scroll_lock = 0;
-// unsigned char kana_led = 0;
-// unsigned char compose_led = 0;
 #define LEDSTRENG 200
 void panelIndicators(void) {
-    // os_variant_t os                 = detected_host_os();
-    //
-
     if (panelLedEnable == false) {
         rgb_matrix_set_color(BATTERY_LED, 0, 0, 0);
         rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 0);
@@ -191,12 +169,6 @@ void panelIndicators(void) {
         }
     }
 
-    // if (BATTERYENABLED) {
-    //     rgb_matrix_set_color(BATTERY_LED, 255, 0, 255);
-    // } else {
-    //     rgb_matrix_set_color(BATTERY_LED, caps_lock, num_lock,scroll_lock);
-    // }
-
     rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 255);
 #endif
 short w = 0;
@@ -216,8 +188,6 @@ void suspend_power_down_user(void) {
         rgb_matrix_disable();
     } else {
         rgb_matrix_enable();
-
-        // rgb_matrix_set_color(BATTERY_LED, 0, 100, 100);
     }
 
     panelIndicators();
@@ -225,11 +195,6 @@ void suspend_power_down_user(void) {
 bool led_update_kb(led_t led_state) {
     bool res = led_update_user(led_state);
     if(res) {
-        // writePin sets the pin high for 1 and low for 0.
-        // In this example the pins are inverted, setting
-        // it low/0 turns it on, and high/1 turns the LED off.
-        // This behavior depends on whether the LED is between the pin
-        // and VCC or the pin and GND.
         ledState = 0;
         if (led_state.num_lock){
             ledState = NUM_LED;
@@ -258,19 +223,9 @@ void keyboard_pre_init_user(void) {
     rgb_matrix_set_color(BATTERY_LED, 0, 0, 0);
     rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 0);
 }
-#ifdef OLD_QMK
-#ifdef OS_DETECTION_ENABLE
-static uint32_t post_timer;
-#endif
-#endif
 void            keyboard_post_init_user(void) {
 #ifdef OS_DETECTION_ENABLE
     previous_os = detected_host_os();
-
-#ifdef OLD_QMK
-    post_timer  = timer_read32();
-#endif
-
 #endif
     panelIndicators();
 }
@@ -279,22 +234,16 @@ void            keyboard_post_init_user(void) {
 bool dip_switch_update_user(uint8_t index, bool active) {
     switch (index) {
         case 0:
-            if (active) {  // Win/Android mode
-                // do stuff
-                //
-                // rgb_matrix_set_color(BLUETOOTH_LED, 0, 255, 255);
-                //
-
+            if (active) {
                 BLUETOOTHSTATE = true;
-            } else {  // Mac/iOS mode
-                // do stuff
+            } else {
                 BLUETOOTHSTATE = false;
             }
             break;
         case 1:
-            if (active) {  // Cable mode
+            if (active) {
                 BATTERYENABLED = true;
-            } else {  // BT mode
+            } else {
                 BATTERYENABLED = false;
             }
             break;
@@ -306,30 +255,13 @@ bool dip_switch_update_user(uint8_t index, bool active) {
 bool            delayedEnable = false;
 static uint32_t key_timer;
 #define ENABLEDELAY 300  // ms to wait until rgblight time out, 900K ms is 15min.
-#define BOOTDELAY 7000
 void suspend_wakeup_init_user(void) {
     delayedEnable = true;
     key_timer     = timer_read32();
-    // rgb_matrix_enable();
 
 #ifdef OS_DETECTION_ENABLE
-    // previous_os = detected_host_os();
-    //
     os_variant_t os = detected_host_os();
-#ifdef OLD_QMK
-
-    if (previous_os == OS_UNSURE && timer_elapsed32(post_timer) > BOOTDELAY && os != OS_UNSURE) {
-
-        post_timer  = timer_read32();
-        previous_os  = os;
-
-        panelIndicators();
-        restartKBBB();
-        return ;
-    }
-#endif
     previous_os  = os;
-
 #endif
 
     panelIndicators();
@@ -351,7 +283,6 @@ uint8_t getLayer(void) {
 }
 
 void maskLayer(uint8_t layer) {
-    // uint8_t layer = getLayer();
     for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
         for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
             uint8_t index = g_led_config.matrix_co[row][col];
@@ -359,21 +290,14 @@ void maskLayer(uint8_t layer) {
                 continue;
             }
 
-            //  DEFAULT LAYER
-
             keypos_t keypos = {col, row};
 
-            // off
             if (keymap_key_to_keycode(layer, keypos) == KC_NO) {
                 g_led_config.flags[index] = 0;
                 rgb_matrix_set_color(index, RGB_OFF);
-            } else
-                // transparent
-                if (keymap_key_to_keycode(layer, keypos) == KC_TRNS) {
+            } else if (keymap_key_to_keycode(layer, keypos) == KC_TRNS) {
                 g_led_config.flags[index] = 0;
                 rgb_matrix_set_color(index, RGB_OFF);
-                // rgb_matrix_set_layer_color(
-                //     index, resolve_effective_kc_layer(keypos, layer));
             } else {
                 g_led_config.flags[index] = 4;
             }
@@ -382,8 +306,6 @@ void maskLayer(uint8_t layer) {
 }
 
 int setIndicator(uint8_t layer) {
-    // panelIndicators();
-    //
     if (layer_MASK > 0) {
         maskLayer(layer);
     }
@@ -396,23 +318,18 @@ int setIndicator(uint8_t layer) {
             break;
 
         case FN2:
-            // Allows for a preview of RGB adjustments
             g_led_config.flags[INDICATOR_KEY] = 0;
             rgb_matrix_set_color(INDICATOR_KEY, 0, 255, 0);
             return 0;
             break;
 
         case FN3:
-            // Allows for a preview of RGB adjustments
-
             g_led_config.flags[INDICATOR_KEY] = 0;
             rgb_matrix_set_color(INDICATOR_KEY, 0, 0, 255);
             return 0;
             break;
         case BASE:
-
             g_led_config.flags[INDICATOR_KEY] = 4;
-            // rgb_matrix_set_color(INDICATOR_KEY, 255, 255,255);
             return 0;
             break;
     }
@@ -421,7 +338,6 @@ int setIndicator(uint8_t layer) {
 }
 void changeLayerMask(bool reverse) {
     if (reverse) {
-        // First temporarily canceling both shifts so that
         if (layer_MASK == 1) {
             layer_MASK = 0;
         }
@@ -459,7 +375,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (record->event.pressed) {
                 panelLedEnable = !panelLedEnable;
                 panelIndicators();
-                // Detect the activation of either shift keys
             }
             return false;
             break;
@@ -486,7 +401,6 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
                 rgb_matrix_set_color(INDICATOR_KEY, 0, 0, 255);
                 break;
             default:
-                /* BASE: leave to effect (no Caps Lock indicator - was lighting battery LED on toggle) */
                 break;
         }
     }
