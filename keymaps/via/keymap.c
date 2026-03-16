@@ -71,7 +71,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
      * |-----------------------------------------------------------------------------------------+
      * | Shift      |V-UP |V-DWN|MUTE |  v  |  b  |  n  |  m  |  ,  | INS | DEL  |    Shift       |
      * |-----------------------------------------------------------------------------------------+
-     * | Ctrl  | Win  |  Alt  |               space             | Alt  |  FN1  |  FN2  | Boot   |
+     * | Ctrl  | Lock | TO FN2 |  Alt  |             space             | Alt  |  FN2  | Boot   |
      * \-----------------------------------------------------------------------------------------/
      */
     [FN1] = LAYOUT_60_ansi(
@@ -79,7 +79,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______, _______, KC_UP,   _______, _______, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
         _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
         _______, KC_VOLU, KC_VOLD, KC_MUTE, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
-        _______, QK_LLCK, _______, _______, _______, _______, MO(FN2), QK_BOOTLOADER
+        _______, QK_LLCK, TO(FN2), _______, _______, _______, MO(FN2), QK_BOOTLOADER
     ),
     /*
      * Layer FN2 (VIA: CS_LAYER_MASK_F, QK_REBOOT, mouse keys; RGB controls)
@@ -88,18 +88,18 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
      * |-----------------------------------------------------------------------------------------+
      * | FN2  |MASK |MS_UP|    |REBOOT|    |    |    |    |    | PS  |HOME | END |                |
      * |-----------------------------------------------------------------------------------------+
-     * |        |MS_L |MS_DN|MS_R |    |    |    |    |    |    | PGUP| PGDN |    Enter          |
+     * |        |MS_L |MS_DN|MS_R |    |    |    |    |    | PGUP| PGDN |    Enter          |
      * |-----------------------------------------------------------------------------------------+
-     * | Shift      |    |    |    |    |    |    |    |    |    | INS | DEL  |    Shift         |
+     * | ACL1  | WhL  | WhU  | WhD  | WhR  |    |    |    |    | INS | DEL  |    Shift         |
      * |-----------------------------------------------------------------------------------------+
-     * | Ctrl  | Win  |  Alt  |               space             | Alt  |  FN1  |  FN2  | Boot   |
+     * | Ctrl  | Lock | ACL2 | Btn1 |               space             | FN1  | FN2  | Boot   |
      * \-----------------------------------------------------------------------------------------/
      */
     [FN2] = LAYOUT_60_ansi(
         _______, _______, _______, _______, _______, RM_NEXT, RM_PREV, RM_HUEU, RM_HUED, RM_VALU, RM_VALD, RM_SPDU, RM_SPDD, MS_BTN2,
         MO(FN2), CS_LAYER_MASK_F, MS_UP, _______, QK_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
         _______, MS_LEFT, MS_DOWN, MS_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
-        MS_ACL1, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
+        MS_ACL1, MS_WHLL, MS_WHLU, MS_WHLD, MS_WHLR, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
         MS_ACL0, QK_LLCK, MS_ACL2, MS_BTN1, _______, MO(FN1), MO(FN2), QK_BOOTLOADER
     ),
     /*
