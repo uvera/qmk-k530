@@ -139,143 +139,13 @@ COMPOSE_LED = (1<< 4)
 
 unsigned char ledState = 0;
 #define LEDSTRENG 200
-void panelIndicators(void) {
-    if (panelLedEnable == false) {
-        rgb_matrix_set_color(BATTERY_LED, 0, 0, 0);
-        rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 0);
-        return;
-    }
-
-#ifdef OS_DETECTION_ENABLE
-    if (BLUETOOTHSTATE == false) {
-        switch (previous_os) {
-            case OS_UNSURE:
-
-                rgb_matrix_set_color(BLUETOOTH_LED, 0, 100, 100);
-                break;
-            case OS_LINUX:
-
-                rgb_matrix_set_color(BLUETOOTH_LED, 255, 255, 30);
-                break;
-            case OS_WINDOWS:
-                rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 255);
-                break;
-            case OS_MACOS:
-
-                rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 255);
-                break;
-            case OS_IOS:
-                break;
-        }
-    }
-
-    rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 255);
-#endif
-short w = 0;
-    if (BATTERYENABLED) {
-        w = 50;
-    }
-    rgb_matrix_set_color(BATTERY_LED, (ledState & CAPS_LED)*LEDSTRENG + w , (ledState & NUM_LED) * LEDSTRENG+ w ,(ledState& SCROLL_LED) * LEDSTRENG+ w);
-}
-
-void suspend_power_down_user(void) {
-#ifdef OS_DETECTION_ENABLE
-
-    previous_os = OS_UNSURE;
-#endif
-
-    if (!BATTERYENABLED) {
-        rgb_matrix_disable();
-    } else {
-        rgb_matrix_enable();
-    }
-
-    panelIndicators();
-}
-static void updateLedStateFromHost(led_t led_state) {
-    ledState = 0;
-    if (led_state.num_lock) {
-        ledState = NUM_LED;
-    }
-    if (led_state.scroll_lock) {
-        ledState |= SCROLL_LED;
-    }
-    if (led_state.caps_lock) {
-        ledState |= CAPS_LED;
-    }
-    if (led_state.compose) {
-        ledState |= COMPOSE_LED;
-    }
-    if (led_state.kana) {
-        ledState |= KANA_LED;
-    }
-    panelIndicators();
-}
-bool led_update_kb(led_t led_state) {
-    bool res = led_update_user(led_state);
-    if (res) {
-        updateLedStateFromHost(led_state);
-    }
-    return res;
-}
-void keyboard_pre_init_user(void) {
-    g_led_config.flags[BATTERY_LED] = 0;
-
-    g_led_config.flags[BLUETOOTH_LED] = 0;
-    rgb_matrix_set_color(BATTERY_LED, 0, 0, 0);
-    rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 0);
-}
-void            keyboard_post_init_user(void) {
-#ifdef OS_DETECTION_ENABLE
-    previous_os = detected_host_os();
-#endif
-    panelIndicators();
-}
-
-#if defined(DIP_SWITCH_PINS) || defined(DIP_SWITCH_MATRIX_GRID)
-bool dip_switch_update_user(uint8_t index, bool active) {
-    switch (index) {
-        case 0:
-            if (active) {
-                BLUETOOTHSTATE = true;
-            } else {
-                BLUETOOTHSTATE = false;
-            }
-            break;
-        case 1:
-            if (active) {
-                BATTERYENABLED = true;
-            } else {
-                BATTERYENABLED = false;
-            }
-            break;
-    }
-    panelIndicators();
-    return true;
-}
-#endif
-bool            delayedEnable = false;
-static uint32_t key_timer;
 #define ENABLEDELAY 300  // ms to wait until rgblight time out, 900K ms is 15min.
-void suspend_wakeup_init_user(void) {
-    delayedEnable = true;
-    key_timer     = timer_read32();
 
-#ifdef OS_DETECTION_ENABLE
-    os_variant_t os = detected_host_os();
-    previous_os  = os;
-#endif
+static bool     delayedEnable = false;
+static uint32_t key_timer;
 
-    panelIndicators();
-}
-void check_rgb_timeout(void) {
-    if (delayedEnable && timer_elapsed32(key_timer) > ENABLEDELAY)  // check if RGB has already timeout and if enough time has passed
-    {
-        rgb_matrix_enable();
-        delayedEnable = false;
-    }
-}
-void    housekeeping_task_user(void) { check_rgb_timeout(); }
+/* --- Helpers --- */
+
 static uint8_t resolve_layer(layer_state_t state) {
     uint8_t layer = get_highest_layer(state);
     if (layer == 0) {
@@ -283,6 +153,7 @@ static uint8_t resolve_layer(layer_state_t state) {
     }
     return layer;
 }
+
 uint8_t getLayer(void) {
     return resolve_layer(layer_state);
 }
@@ -294,8 +165,8 @@ void maskLayer(uint8_t layer) {
             if (index == INDICATOR_KEY || index == BLUETOOTH_LED || index == BATTERY_LED) {
                 continue;
             }
-            keypos_t keypos   = {col, row};
-            uint16_t keycode  = keymap_key_to_keycode(layer, keypos);
+            keypos_t keypos  = {col, row};
+            uint16_t keycode = keymap_key_to_keycode(layer, keypos);
             if (keycode == KC_NO || keycode == KC_TRNS) {
                 g_led_config.flags[index] = 0;
                 rgb_matrix_set_color(index, RGB_OFF);
@@ -327,13 +198,47 @@ static void setIndicatorLed(uint8_t layer) {
             break;
     }
 }
-int setIndicator(uint8_t layer) {
-    if (layer_MASK > 0) {
-        maskLayer(layer);
+
+static void check_rgb_timeout(void) {
+    if (delayedEnable && timer_elapsed32(key_timer) > ENABLEDELAY) {
+        rgb_matrix_enable();
+        delayedEnable = false;
     }
-    setIndicatorLed(layer);
-    return 0;
 }
+
+/* --- Custom --- */
+
+void panelIndicators(void) {
+    if (panelLedEnable == false) {
+        rgb_matrix_set_color(BATTERY_LED, 0, 0, 0);
+        rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 0);
+        return;
+    }
+#ifdef OS_DETECTION_ENABLE
+    if (BLUETOOTHSTATE == false) {
+        switch (previous_os) {
+            case OS_UNSURE:
+                rgb_matrix_set_color(BLUETOOTH_LED, 0, 100, 100);
+                break;
+            case OS_LINUX:
+                rgb_matrix_set_color(BLUETOOTH_LED, 255, 255, 30);
+                break;
+            case OS_WINDOWS:
+                rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 255);
+                break;
+            case OS_MACOS:
+                rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 255);
+                break;
+            case OS_IOS:
+                break;
+        }
+    }
+    rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 255);
+#endif
+    short w = BATTERYENABLED ? 50 : 0;
+    rgb_matrix_set_color(BATTERY_LED, (ledState & CAPS_LED) * LEDSTRENG + w, (ledState & NUM_LED) * LEDSTRENG + w, (ledState & SCROLL_LED) * LEDSTRENG + w);
+}
+
 void changeLayerMask(bool reverse) {
     if (reverse) {
         if (layer_MASK == 1) {
@@ -344,45 +249,130 @@ void changeLayerMask(bool reverse) {
             layer_MASK = 1;
         }
     }
-
     if (layer_MASK > 0) {
         maskLayer(getLayer());
     } else {
-        /* Restore all key LEDs to normal: use BASE layer index, not default_layer_state (bitmask).
-         * Passing default_layer_state (e.g. 1) was wrongly masking by FN1, leaving many keys off. */
         maskLayer(biton32(default_layer_state));
     }
 }
+
+int setIndicator(uint8_t layer) {
+    if (layer_MASK > 0) {
+        maskLayer(layer);
+    }
+    setIndicatorLed(layer);
+    return 0;
+}
+
+static void updateLedStateFromHost(led_t led_state) {
+    ledState = 0;
+    if (led_state.num_lock) {
+        ledState = NUM_LED;
+    }
+    if (led_state.scroll_lock) {
+        ledState |= SCROLL_LED;
+    }
+    if (led_state.caps_lock) {
+        ledState |= CAPS_LED;
+    }
+    if (led_state.compose) {
+        ledState |= COMPOSE_LED;
+    }
+    if (led_state.kana) {
+        ledState |= KANA_LED;
+    }
+    panelIndicators();
+}
+
+/* --- QMK hooks --- */
+
+void keyboard_pre_init_user(void) {
+    g_led_config.flags[BATTERY_LED]   = 0;
+    g_led_config.flags[BLUETOOTH_LED] = 0;
+    rgb_matrix_set_color(BATTERY_LED, 0, 0, 0);
+    rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 0);
+}
+
+void keyboard_post_init_user(void) {
+#ifdef OS_DETECTION_ENABLE
+    previous_os = detected_host_os();
+#endif
+    panelIndicators();
+}
+
+void suspend_power_down_user(void) {
+#ifdef OS_DETECTION_ENABLE
+    previous_os = OS_UNSURE;
+#endif
+    if (!BATTERYENABLED) {
+        rgb_matrix_disable();
+    } else {
+        rgb_matrix_enable();
+    }
+    panelIndicators();
+}
+
+void suspend_wakeup_init_user(void) {
+    delayedEnable = true;
+    key_timer     = timer_read32();
+#ifdef OS_DETECTION_ENABLE
+    os_variant_t os = detected_host_os();
+    previous_os     = os;
+#endif
+    panelIndicators();
+}
+
+void housekeeping_task_user(void) {
+    check_rgb_timeout();
+}
+
+#if defined(DIP_SWITCH_PINS) || defined(DIP_SWITCH_MATRIX_GRID)
+bool dip_switch_update_user(uint8_t index, bool active) {
+    switch (index) {
+        case 0:
+            BLUETOOTHSTATE = active;
+            break;
+        case 1:
+            BATTERYENABLED = active;
+            break;
+    }
+    panelIndicators();
+    return true;
+}
+#endif
+
+bool led_update_kb(led_t led_state) {
+    bool res = led_update_user(led_state);
+    if (res) {
+        updateLedStateFromHost(led_state);
+    }
+    return res;
+}
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
         case CS_LAYER_MASK_F:
             if (record->event.pressed) {
-                /* Toggle: if mask is on, turn off; if off, turn on */
                 changeLayerMask(layer_MASK == 1);
             }
             return false;
-            break;
-
         case CS_LAYER_MASK_B:
             if (record->event.pressed) {
-                changeLayerMask(true);  /* Force mask off */
+                changeLayerMask(true);
             }
             return false;
-            break;
         case RD_PANEL_TG:
             if (record->event.pressed) {
                 panelLedEnable = !panelLedEnable;
                 panelIndicators();
             }
             return false;
-            break;
-
         default:
-            return true;  // Process all other keycodes normally
+            return true;
     }
 }
+
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
-    /* Apply layer indicator and panel LEDs every frame so the animation doesn't overwrite them */
     if (INDICATOR_KEY >= led_min && INDICATOR_KEY <= led_max) {
         setIndicatorLed(resolve_layer(layer_state));
     }
