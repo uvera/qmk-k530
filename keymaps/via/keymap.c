@@ -158,8 +158,8 @@ void panelIndicators(void) {
                 rgb_matrix_set_color(BLUETOOTH_LED, 255, 255, 30);
                 break;
             case OS_WINDOWS:
-
                 rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 255);
+                break;
             case OS_MACOS:
 
                 rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 255);
@@ -308,36 +308,33 @@ void maskLayer(uint8_t layer) {
     }
 }
 
-int setIndicator(uint8_t layer) {
-    if (layer_MASK > 0) {
-        maskLayer(layer);
-    }
-
+static void setIndicatorLed(uint8_t layer) {
     switch (layer) {
         case FN1:
             g_led_config.flags[INDICATOR_KEY] = 0;
             rgb_matrix_set_color(INDICATOR_KEY, 255, 0, 0);
-            return 0;
             break;
-
         case FN2:
             g_led_config.flags[INDICATOR_KEY] = 0;
             rgb_matrix_set_color(INDICATOR_KEY, 0, 255, 0);
-            return 0;
             break;
-
         case FN3:
             g_led_config.flags[INDICATOR_KEY] = 0;
             rgb_matrix_set_color(INDICATOR_KEY, 0, 0, 255);
-            return 0;
             break;
         case BASE:
             g_led_config.flags[INDICATOR_KEY] = 4;
-            return 0;
+            break;
+        default:
             break;
     }
-
-    return 1;
+}
+int setIndicator(uint8_t layer) {
+    if (layer_MASK > 0) {
+        maskLayer(layer);
+    }
+    setIndicatorLed(layer);
+    return 0;
 }
 void changeLayerMask(bool reverse) {
     if (reverse) {
@@ -389,20 +386,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     /* Apply layer indicator and panel LEDs every frame so the animation doesn't overwrite them */
     if (INDICATOR_KEY >= led_min && INDICATOR_KEY <= led_max) {
-        uint8_t layer = resolve_layer(layer_state);
-        switch (layer) {
-            case FN1:
-                rgb_matrix_set_color(INDICATOR_KEY, 255, 0, 0);
-                break;
-            case FN2:
-                rgb_matrix_set_color(INDICATOR_KEY, 0, 255, 0);
-                break;
-            case FN3:
-                rgb_matrix_set_color(INDICATOR_KEY, 0, 0, 255);
-                break;
-            default:
-                break;
-        }
+        setIndicatorLed(resolve_layer(layer_state));
     }
     if ((BATTERY_LED >= led_min && BATTERY_LED <= led_max) || (BLUETOOTH_LED >= led_min && BLUETOOTH_LED <= led_max)) {
         panelIndicators();
