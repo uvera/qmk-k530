@@ -192,27 +192,29 @@ void suspend_power_down_user(void) {
 
     panelIndicators();
 }
+static void updateLedStateFromHost(led_t led_state) {
+    ledState = 0;
+    if (led_state.num_lock) {
+        ledState = NUM_LED;
+    }
+    if (led_state.scroll_lock) {
+        ledState |= SCROLL_LED;
+    }
+    if (led_state.caps_lock) {
+        ledState |= CAPS_LED;
+    }
+    if (led_state.compose) {
+        ledState |= COMPOSE_LED;
+    }
+    if (led_state.kana) {
+        ledState |= KANA_LED;
+    }
+    panelIndicators();
+}
 bool led_update_kb(led_t led_state) {
     bool res = led_update_user(led_state);
-    if(res) {
-        ledState = 0;
-        if (led_state.num_lock){
-            ledState = NUM_LED;
-
-        }
-        if (led_state.scroll_lock){
-            ledState |= SCROLL_LED;
-        }
-        if (led_state.caps_lock){
-        ledState |= CAPS_LED;
-        }
-        if (led_state.compose){
-            ledState |= COMPOSE_LED;
-        }
-        if (led_state.kana){
-            ledState|= KANA_LED;
-        }
-        panelIndicators();
+    if (res) {
+        updateLedStateFromHost(led_state);
     }
     return res;
 }
@@ -292,13 +294,9 @@ void maskLayer(uint8_t layer) {
             if (index == INDICATOR_KEY || index == BLUETOOTH_LED || index == BATTERY_LED) {
                 continue;
             }
-
-            keypos_t keypos = {col, row};
-
-            if (keymap_key_to_keycode(layer, keypos) == KC_NO) {
-                g_led_config.flags[index] = 0;
-                rgb_matrix_set_color(index, RGB_OFF);
-            } else if (keymap_key_to_keycode(layer, keypos) == KC_TRNS) {
+            keypos_t keypos   = {col, row};
+            uint16_t keycode  = keymap_key_to_keycode(layer, keypos);
+            if (keycode == KC_NO || keycode == KC_TRNS) {
                 g_led_config.flags[index] = 0;
                 rgb_matrix_set_color(index, RGB_OFF);
             } else {
