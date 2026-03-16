@@ -274,12 +274,15 @@ void check_rgb_timeout(void) {
     }
 }
 void    housekeeping_task_user(void) { check_rgb_timeout(); }
-uint8_t getLayer(void) {
-    uint8_t layer = get_highest_layer(layer_state);
+static uint8_t resolve_layer(layer_state_t state) {
+    uint8_t layer = get_highest_layer(state);
     if (layer == 0) {
         layer = biton32(default_layer_state);
     }
     return layer;
+}
+uint8_t getLayer(void) {
+    return resolve_layer(layer_state);
 }
 
 void maskLayer(uint8_t layer) {
@@ -386,10 +389,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     /* Apply layer indicator and panel LEDs every frame so the animation doesn't overwrite them */
     if (INDICATOR_KEY >= led_min && INDICATOR_KEY <= led_max) {
-        uint8_t layer = get_highest_layer(layer_state);
-        if (layer == 0) {
-            layer = biton32(default_layer_state);
-        }
+        uint8_t layer = resolve_layer(layer_state);
         switch (layer) {
             case FN1:
                 rgb_matrix_set_color(INDICATOR_KEY, 255, 0, 0);
@@ -411,11 +411,6 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 }
 
 layer_state_t layer_state_set_user(layer_state_t state) {
-    uint8_t layer = get_highest_layer(state);
-    if (layer == 0) {
-        setIndicator(biton32(default_layer_state));
-    } else {
-        setIndicator(layer);
-    }
+    setIndicator(resolve_layer(state));
     return state;
 }
