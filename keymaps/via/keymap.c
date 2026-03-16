@@ -90,7 +90,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
      * |-----------------------------------------------------------------------------------------+
      * |        |MS_L |MS_DN|MS_R |    |    |    |    |    | PGUP| PGDN |    Enter          |
      * |-----------------------------------------------------------------------------------------+
-     * | ACL1  | WhL  | WhU  | WhD  | WhR  |    |    |    |    | INS | DEL  |    Shift         |
+     * | ACL1  | WhL  | WhD  | WhU  | WhR  |    |    |    |    | INS | DEL  |    Shift         |
      * |-----------------------------------------------------------------------------------------+
      * | Ctrl  | Lock | ACL2 | Btn1 |               space             | FN1  | FN2  | Boot   |
      * \-----------------------------------------------------------------------------------------/
@@ -99,7 +99,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______, _______, _______, _______, _______, RM_NEXT, RM_PREV, RM_HUEU, RM_HUED, RM_VALU, RM_VALD, RM_SPDU, RM_SPDD, MS_BTN2,
         MO(FN2), CS_LAYER_MASK_F, MS_UP, _______, QK_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
         _______, MS_LEFT, MS_DOWN, MS_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
-        MS_ACL1, MS_WHLL, MS_WHLU, MS_WHLD, MS_WHLR, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
+        MS_ACL1, MS_WHLL, MS_WHLD, MS_WHLU, MS_WHLR, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
         MS_ACL0, QK_LLCK, MS_ACL2, MS_BTN1, _______, MO(FN1), MO(FN2), QK_BOOTLOADER
     ),
     /*
