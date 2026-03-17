@@ -25,7 +25,8 @@
         "rgb_matrix": true
     },
 
-    "debounce": 12,
+    "debounce": 6,
+    "debounce_type": "sym_defer_pk",
     "development_board": "sn32f240b_shared_matrix",
     "diode_direction": "COL2ROW",
     "matrix_pins": {
