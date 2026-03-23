@@ -92,9 +92,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______, _______, _______, _______, _______, _______, MO(FN2), QK_BOOTLOADER
     ),
     /*
-     * Layer FN2 (RGB + layer mask, reboot, bootloader)
+     * Layer FN2 (RGB + layer mask, reboot, bootloader, BT pair/status/restore)
      * ,-----------------------------------------------------------------------------------------.
-     * |    |    |    |    |    |NEXT |PREV |HUE+ |HUE- |VAL+ |VAL- |SPD+ |SPD- |   Bksp   |
+     * |PAIR|STAT|RSTR|WLS |PRB |NEXT |PREV |HUE+ |HUE- |VAL+ |VAL- |SPD+ |SPD- |   Bksp   |
      * |-----------------------------------------------------------------------------------------+
      * | FN2  |MASK | UP  |    |REBOOT|    |    |    |    |    | PS  |HOME | END |                |
      * |-----------------------------------------------------------------------------------------+
@@ -106,7 +106,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
      * \-----------------------------------------------------------------------------------------/
      */
     [FN2] = LAYOUT_60_ansi(
-        _______, _______, _______, _______, _______, RM_NEXT, RM_PREV, RM_HUEU, RM_HUED, RM_VALU, RM_VALD, RM_SPDU, RM_SPDD, MS_BTN2,
+        K530_BT_PAIR, K530_BT_STATUS, K530_BT_RESTORE, K530_BT_WIRELESS, K530_BT_PROBE, RM_NEXT, RM_PREV, RM_HUEU, RM_HUED, RM_VALU, RM_VALD, RM_SPDU, RM_SPDD, MS_BTN2,
         MO(FN2), QK_LAYER_MASK, KC_UP, _______, MY_REBOOT, _______, _______, _______, _______, _______, KC_PSCR, KC_HOME, KC_END,  _______,
         _______, KC_LEFT, KC_DOWN, KC_RGHT, _______, _______, _______, _______, _______, _______, KC_PGUP, KC_PGDN, _______,
         _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_INS,  KC_DEL,  _______,
