@@ -37,6 +37,13 @@
 #define K530_BT_REPORT_STATUS 0
 #define K530_BT_REPULSE_MS 10
 #define K530_BT_REPULSE_MAX 5
+#define K530_BT_LED 62
+/* Stock blink periods for module states 1 and 2: 32 and 96 ticks of 20 ms. */
+#define K530_BT_BLINK_FAST_MS 640
+#define K530_BT_BLINK_SLOW_MS 1920
+#define K530_BT_PAIR_TIMEOUT_MS 60000
+#define K530_BT_RECONNECT_TIMEOUT_MS 10000
+#define K530_BT_CONNECTED_SHOW_MS 2000
 
 enum k530_link {
     LINK_UNKNOWN,
@@ -131,6 +138,18 @@ static uint16_t pair_pressed_at;
 static uint8_t  pair_last; /* 0 none, 1 reconnect, 2 pair */
 
 static bool status_on;
+
+/*
+ * Module state for the Bluetooth LED, as stock keeps it in 0x200000BF:
+ * 0 quiet, 1 and 2 blink. A pair or reconnect command sets it at once;
+ * the 0xA7 reply clocked with that command predates it, so replies are
+ * ignored for the first second.
+ */
+static uint8_t  radio_state;
+static uint16_t state_hold_at;
+static uint16_t state_hold_ms;
+static uint16_t a7_used_at;
+static uint16_t connected_at;
 
 static bool usb_up(void) {
     return usbGetDriverStateI(&USB_DRIVER) == USB_ACTIVE;
@@ -303,7 +322,33 @@ static void send_a6(uint8_t action) {
     module_stat[1] = 0;
     a6_clocked     = 0;
     sent_channel   = bt_channel;
+    radio_state    = action;
+    state_hold_at  = timer_read();
+    state_hold_ms  = action == 1 ? K530_BT_PAIR_TIMEOUT_MS : K530_BT_RECONNECT_TIMEOUT_MS;
+    connected_at   = 0;
     publish_frame();
+}
+
+static void set_radio_state(uint8_t state) {
+    if (radio_state != 0 && state == 0) {
+        connected_at = timer_read() | 1;
+    }
+    radio_state = state;
+}
+
+static void radio_state_task(void) {
+    uint16_t seen = a7_seen_at;
+    if (module_seen && seen != a7_used_at) {
+        a7_used_at = seen;
+        if (!state_hold_ms || (uint16_t)(seen - state_hold_at) >= 1000) {
+            state_hold_ms = 0;
+            set_radio_state(module_stat[1]);
+        }
+    }
+    if (state_hold_ms && timer_elapsed(state_hold_at) > state_hold_ms) {
+        state_hold_ms = 0;
+        radio_state   = 0;
+    }
 }
 
 /*
@@ -611,6 +656,7 @@ void bluetooth_task(void) {
     select_host();
     channel_task();
     pair_task();
+    radio_state_task();
 
     /* The key-up waits for the radio to read the key-down, but not forever. */
     if (link == LINK_WIRELESS && need_release && (!hold_key || timer_elapsed(aa_sent_at) > 50) && !txn_open && !pulse_pending) {
@@ -792,11 +838,38 @@ static void paint_level(uint8_t led_min, uint8_t led_max, uint8_t led, bool high
  *           bit 0 leftmost
  *   Right Shift  white once any 0xA7 arrived
  */
+/*
+ * Bluetooth case LED while wireless, after stock 0x6694/0x674A: the
+ * channel colour (red BT1, green BT2, blue BT3) blinks fast in state 1
+ * and slowly in state 2, and shows solid for a moment once the radio
+ * goes quiet. Otherwise the keymap's own panel colour stays.
+ */
+static void bt_led(uint8_t led_min, uint8_t led_max) {
+    if (link != LINK_WIRELESS) {
+        return;
+    }
+    uint16_t period;
+    if (radio_state == 1) {
+        period = K530_BT_BLINK_FAST_MS;
+    } else if (radio_state == 2) {
+        period = K530_BT_BLINK_SLOW_MS;
+    } else if (connected_at && timer_elapsed(connected_at) < K530_BT_CONNECTED_SHOW_MS) {
+        period = 0;
+    } else {
+        connected_at = 0;
+        return;
+    }
+    bool on = period == 0 || (timer_read() % period) < period / 2;
+    uint8_t v = on ? 255 : 0;
+    set_led(led_min, led_max, K530_BT_LED, bt_channel == 0 ? v : 0, bt_channel == 1 ? v : 0, bt_channel == 2 ? v : 0);
+}
+
 bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
     if (!rgb_matrix_indicators_advanced_user(led_min, led_max)) {
         return false;
     }
     if (!status_on) {
+        bt_led(led_min, led_max);
         return true;
     }
     for (uint8_t i = led_min; i < led_max; i++) {

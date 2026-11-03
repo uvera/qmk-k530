@@ -51,7 +51,7 @@ The K530 has **63 RGB LEDs**: 60 under the keys and **3 extra** used for status.
 |-----|-------------|----------------|
 | **Indicator (key LED 28)** | One of the key LEDs (e.g. above a modifier) | **Current layer**: Red = FN1, Green = FN2, Blue = FN3. On BASE it follows the normal RGB effect. With layer mask on, it still shows the layer colour. |
 | **Battery LED (61)** | On the case (battery/status) | **DIP 1 ON (cable):** fixed colour. **DIP 1 OFF (BT):** Caps lock (red), Num lock (green), Scroll lock (blue). |
-| **Bluetooth LED (62)** | On the case (Bluetooth) | **DIP 0 ON (Win/Android):** “connected” style. **DIP 0 OFF (Mac/iOS):** colour by **detected OS** (see next section). |
+| **Bluetooth LED (62)** | On the case (Bluetooth) | While Bluetooth is pairing or reconnecting it blinks in the slot colour (see section 10). Otherwise: **DIP 0 ON (Win/Android):** “connected” style. **DIP 0 OFF (Mac/iOS):** colour by **detected OS** (see next section). |
 
 ---
 
@@ -154,6 +154,16 @@ The board talks to its PixArt PAR2801 radio over SPI (`k530_bt.c`). The radio do
 **Pairing.** Hold FN2+Esc for 3 s, then pair `Draconic -N` from the host. The host has to confirm a passkey. On Linux that needs a running Bluetooth agent (desktop applet, or `bluetoothctl` with `agent on` and `default-agent`).
 
 **After flashing.** Flashing resets only the keyboard chip. If the host doesn't reconnect by itself, tap FN2+Esc.
+
+**Bluetooth LED (case LED 62) while wireless.** This works like the stock firmware. The colour is the slot: red BT1, green BT2, blue BT3.
+
+| Radio state | LED |
+|-------------|-----|
+| Pairing (state 1) | Fast blink, about 0.6 s per cycle. Starts as soon as you hold FN2+Esc for 3 s. Stops after 60 s if nothing else is reported. |
+| Reconnecting (state 2) | Slow blink, about 1.9 s per cycle. Starts on an FN2+Esc tap or a slot change. Stops after 10 s if nothing else is reported. |
+| Connected or idle (state 0) | Solid for 2 s after a blink ends, then the keymap's normal panel colour (see sections 3 and 4). |
+
+When wired, the LED always shows the keymap's panel colour.
 
 ### Status display (FN2 + 1)
 
