@@ -23,7 +23,7 @@ A **layer** is an extra keymap that is active only while you hold a modifier key
 |-------|-------------------|----------------|
 | **BASE** | (default) | Normal typing – letters, numbers, modifiers. |
 | **FN1** | Hold **Caps Lock** (tap = Caps, hold = FN1) | F-keys (F1–F12), media, navigation, **Bootloader**. |
-| **FN2** | Hold **Down Arrow** (bottom row, second from right) | RGB controls, **layer mask**, **reboot**, **Bootloader**. |
+| **FN2** | Hold **Down Arrow** (bottom row, second from right) | **Bluetooth** keys, RGB controls, **layer mask**, **reboot**, **Bootloader**. |
 | **FN3** | (internal) | Same as FN2 but without the layer-mask key; used for LED logic. |
 
 **Entering the bootloader (for flashing):** Hold **Caps** or **Down**, then press **Right Ctrl** (the rightmost key).
@@ -133,7 +133,52 @@ On **FN2** in VIA: **CS_LAYER_MASK_F** at “Q”, **QK_REBOOT** above Tab. **RD
 
 ---
 
-## 10. Quick reference
+## 10. Bluetooth
+
+The board talks to its PixArt PAR2801 radio over SPI (`k530_bt.c`). The radio does the Bluetooth part itself and keeps the pairings for three host slots.
+
+**Wired or wireless.** The mode switch (P1.13) decides. In the battery (BT) position the board is always wireless, even with a USB cable plugged in. In the cable position it is wired once USB connects, and wireless if USB never comes up within 3 s of boot.
+
+**Host slot.** The BT1/BT2/BT3 switch picks the slot. The radio advertises as `Draconic -1`, `-2` or `-3`. Moving the switch reconnects to the host saved in that slot.
+
+**FN2 top row** (both keymaps):
+
+| Key | Keycode | What it does |
+|-----|---------|--------------|
+| FN2 + **Esc** | `K530_BT_PAIR` | **Tap:** reconnect to the saved host. **Hold 3 s:** pair a new host on the current slot. Wireless only. |
+| FN2 + **1** | `K530_BT_STATUS` | Toggle the radio status display (below). |
+| FN2 + **2** | `K530_BT_RESTORE` | Debug: send the radio's `0xA8` setting with the stock default value 1. |
+| FN2 + **3** | `K530_BT_WIRELESS` | Debug: resend the stock "switched to wireless" command (`0xA5`). |
+| FN2 + **4** | `K530_BT_PROBE` | Debug: send one test frame with a different key code in every byte, then a key-up. |
+
+**Pairing.** Hold FN2+Esc for 3 s, then pair `Draconic -N` from the host. The host has to confirm a passkey. On Linux that needs a running Bluetooth agent (desktop applet, or `bluetoothctl` with `agent on` and `default-agent`).
+
+**After flashing.** Flashing resets only the keyboard chip. If the host doesn't reconnect by itself, tap FN2+Esc.
+
+### Status display (FN2 + 1)
+
+Every other LED goes dark while the display is on. On this board, white shows up slightly purple.
+
+| Key | Shows |
+|-----|-------|
+| Esc, 1, 2, 3 | P1.13 (mode switch), P1.14, A6 (slot switch), USB up. White means high, dim red means low. |
+| 4 | Link: blue wireless, red wired, yellow undecided. |
+| 5 | Radio state from its `0xA7` reply: red 0, yellow 1, green 2, purple other. |
+| 6 | Last pair command: cyan reconnect, purple pair. |
+| 7 | Slot switch: red BT1, green BT2, blue BT3. |
+| 8 | Last pair command read by the radio: green yes, red not yet. |
+| 9 | Radio status replies in the last 2 s. |
+| 0 | Any SPI transfer in the last 2 s. |
+| - | Key report in the last 2 s: green read by the radio, red not read. |
+| = | Request code of the last transfer: green `0xA2` (read), yellow `0x20` (echo), purple other. |
+| Tab..U | Bits of the last request code, bit 0 on Tab. `0xA2` lights Q, T, U. |
+| A..K | Bits of the first byte the radio sent in that transfer. `0xA7` lights A, S, D, H, K. |
+| Z..comma | Bits of the transfer length. A full transfer (39) lights Z, X, C, N. |
+| Right Shift | Lit once any radio status reply has arrived. |
+
+---
+
+## 11. Quick reference
 
 | Goal | How |
 |------|-----|
@@ -142,6 +187,10 @@ On **FN2** in VIA: **CS_LAYER_MASK_F** at “Q”, **QK_REBOOT** above Tab. **RD
 | **Layer mask on/off** | FN2 → **Q** toggles (QK_LAYER_MASK / CS_LAYER_MASK_F). Or bind CS_LAYER_MASK_B for “off only”. |
 | **Panel LEDs on/off** | Bind QK_TOGGLE_PANEL_LED or RD_PANEL_TG to a key and press it. |
 | **Win vs Mac / Cable vs BT** | Use the **DIP switches** on the board. |
+| **Pair a Bluetooth host** | Hold **Down**, hold **Esc** 3 s, then pair `Draconic -N` on the host. |
+| **Reconnect Bluetooth** | Hold **Down**, tap **Esc**. |
+| **Bluetooth slot** | BT1/BT2/BT3 switch. |
+| **Radio status display** | Hold **Down**, press **1**. |
 | **Indicator LED** | Shows current layer (red/green/blue); automatic. |
 | **Bluetooth LED** | DIP 0 OFF = OS colour; DIP 0 ON = “connected” style. |
 | **Battery LED** | DIP 1 ON = cable; DIP 1 OFF = Caps/Num/Scroll lock. |

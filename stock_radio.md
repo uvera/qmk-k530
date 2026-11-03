@@ -141,15 +141,44 @@ The status byte `0x200000B6` is written in one place only, the `0xA8` key path (
 
 When the debounced profile differs from `0x200000BD` for 50 ticks, it sends the short `0xA6` (byte 3 = 2, byte 4 = profile).
 
+## SPI timing on QMK
+
+Answering each byte quickly matters more than any other detail. The slave reply for byte n has to be in the TX FIFO before the radio clocks byte n+1. If the IRQ is late by one byte, every later byte goes out one slot late. The radio then sees a shifted frame, so it gets the wrong modifiers and keys, and the checksum fails.
+
+On QMK, the RGB matrix PWM timer (CT16B1) runs at priority 2. Its callback also scans the shared matrix, so it runs long. With SPI0 at priority 3, frames reached the radio shifted by two bytes:
+
+- byte 1 (link byte 2) landed in the modifier slot as Left Shift, so letters came out uppercase;
+- key slots three to six landed in the overflow bitmap and showed up as extra keys;
+- the checksum matched only when the key codes happened to sum right, so frames got through only while mashing, and key-ups never did.
+
+SPI0 at priority 1 fixes all of it.
+
 ## What the port sends
 
 `k530_bt.c` follows the stock rules above:
 
-- No control frame at boot when wireless. Status byte 0 in control frames (`0xA5`, `0xA6`), and those pair. Key reports (`0xAA`) carry status byte 2: with 0 the radio reads them but never forwards them to the host, although the static reading above says stock sends 0.
-- Wired only when P1.13 is high and USB is active. Stock goes wired on P1.13 high alone at runtime; requiring USB keeps a battery-only board wireless whichever level its switch gives. Transitions send stock's `0xA5` after a zero pulse.
-- `K530_BT_PAIR` (FN2+Esc): tap sends the reconnect `0xA6` (byte 3 = 2), and a 3 s hold sends the pair `0xA6` (byte 3 = 1). Both follow a zero pulse and carry the switch channel in byte 4. The 55-tick hold time has not been measured, so 3 s is an estimate.
-- A switch channel that differs from the last one sent for 500 ms sends the reconnect `0xA6`, as `0x56B6` does.
-- `K530_BT_RESTORE` (FN2+2): one `0xA8` with byte 3 = 1 and status byte 2, the frame stock's action builds when `state[23]` wraps to 1. It is for recovering a module that earlier builds left on `0xA8` value 3.
-- `K530_BT_STATUS` (FN2+1): status display of P1.13, P1.14, A6, USB, the link state, the channel, and the `0xA7` reply bytes. The legend is above `rgb_matrix_indicators_advanced_kb`.
+- **Boot:** no control frame when booting wireless.
+- **Status byte:** 0 in every frame except the debug `0xA8`.
+- **Key reports (`0xAA`):**
+  - Layout is stock's: mods, reserved and six keys in bytes 3..10, then `0x2C` in bytes 35 and 36.
+  - The overflow bitmap (bytes 11..25) stays zero, as stock leaves it with six or fewer keys down.
+  - After a report with keys, the all-keys-up report is always sent. It waits at most 50 ms for the radio to read the key-down first.
+  - Each report is offered to the radio 5 times, 10 ms apart.
+- **Wired or wireless:**
+  - Wired only when P1.13 is high and USB is active. Stock goes wired on P1.13 high alone at runtime; requiring USB keeps a battery-only board wireless whichever level its switch gives.
+  - Transitions send stock's `0xA5` after a zero pulse.
+- **`K530_BT_PAIR` (FN2+Esc):** a tap sends the reconnect `0xA6` (byte 3 = 2), and a 3 s hold sends the pair `0xA6` (byte 3 = 1). Both follow a zero pulse and carry the switch channel in byte 4. The 55-tick hold time has not been measured, so 3 s is an estimate.
+- **Channel switch:** a channel that differs from the last one sent for 500 ms sends the reconnect `0xA6`, as `0x56B6` does.
+- **Debug keys:**
+  - `K530_BT_STATUS` (FN2+1) toggles the status display. Its legend is above `rgb_matrix_indicators_advanced_kb` and in `FEATURES.md`.
+  - `K530_BT_RESTORE` (FN2+2) sends one `0xA8` with byte 3 = 1 and status byte 2.
+  - `K530_BT_WIRELESS` (FN2+3) sends the going-wireless `0xA5`.
+  - `K530_BT_PROBE` (FN2+4) sends a test `0xAA` frame.
+- **Console log:** with `CONSOLE_ENABLE`, the driver logs transfers to the QMK console. That build currently fails USB enumeration after the first interface, so the log is not usable yet.
 
-Earlier builds sent `0xA8` (byte 3 = 1, later 3) and a pair `0xA6` on every boot, and some sent the wired `0xA5` (byte 7 = 1), all with status byte 2 and with P1.13 high treated as wireless. Stock does none of that.
+## Host side
+
+- Pairing asks the host to confirm a passkey. BlueZ needs a registered agent for that, or it rejects the request at once (`No agent available for request type 2`).
+- Resetting the keyboard MCU does not reset the radio. After flashing, a reconnect (FN2+Esc tap) may be needed before the host links again.
+
+Earlier builds sent `0xA8` (byte 3 = 1, later 3) and a pair `0xA6` on every boot, and some sent the wired `0xA5` (byte 7 = 1), all with status byte 2 and with P1.13 high treated as wireless. Stock does none of that. Their "status byte 2 is needed" result came from the shifted frames described under "SPI timing on QMK".
