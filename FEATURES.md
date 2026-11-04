@@ -144,6 +144,11 @@ The board talks to its PixArt PAR2801 radio over SPI (`k530_bt.c`). The radio do
 | Key | Keycode | What it does |
 |-----|---------|--------------|
 | FN2 + **Esc** | `K530_BT_PAIR` | **Tap:** reconnect to the saved host. **Hold 3 s:** pair a new host on the current slot. Wireless only. |
+| FN2 + **I** | `RM_TOGG` | Toggle all keyboard LEDs off or on. |
+| FN2 + **-** / **=** | `RM_NEXT` / `RM_PREV` | Next or previous RGB effect. |
+| FN2 + **[** / **]** | `RM_HUEU` / `RM_HUED` | Hue up or down. |
+| FN2 + **;** / **'** | `RM_VALU` / `RM_VALD` | Brightness up or down. |
+| FN2 + **.** / **/** | `RM_SPDU` / `RM_SPDD` | Effect speed up or down. |
 
 **Pairing.** Hold FN2+Esc for 3 s, then pair `Draconic -N` from the host. The host has to confirm a passkey. On Linux that needs a running Bluetooth agent (desktop applet, or `bluetoothctl` with `agent on` and `default-agent`).
 
@@ -178,6 +183,8 @@ On the **VIA** keymap, hold **Down**: **W A S D** move the pointer, **Space** is
 | **Enter bootloader** | Hold **Caps** or **Down**, then press **Right Ctrl**. |
 | **Reboot (no bootloader)** | FN2 → key **above Q** (MY_REBOOT / QK_REBOOT). |
 | **Layer mask on/off** | FN2 → **Q** toggles (QK_LAYER_MASK / CS_LAYER_MASK_F). Or bind CS_LAYER_MASK_B for “off only”. |
+| **All LEDs on/off** | Hold **Down**, tap **I**. |
+| **RGB effect, colour, brightness, speed** | Hold **Down**. **-** **=** change the effect, **[** **]** the colour, **;** **'** the brightness, **.** **/** the speed. The left key of each pair goes up or to the next effect. |
 | **Panel LEDs on/off** | Bind QK_TOGGLE_PANEL_LED or RD_PANEL_TG to a key and press it. |
 | **Cable vs wireless** | **B13** switch. Pin `A6` is the Bluetooth slot sense line, not a Win/Mac switch. |
 | **Pair a Bluetooth host** | Hold **Down**, hold **Esc** 3 s, then pair `Draconic -N` on the host. |
