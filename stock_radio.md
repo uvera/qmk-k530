@@ -162,7 +162,7 @@ SPI0 at priority 1 fixes all of it.
 - **Key reports (`0xAA`):**
   - Layout is stock's: mods, reserved and six keys in bytes 3..10, then `0x2C` in bytes 35 and 36.
   - The overflow bitmap (bytes 11..25) stays zero. A seventh key is dropped. Stock copies its NKRO bitmap there once six slots are full, and that made the radio emit an extra report.
-  - Bytes 26..32 stay zero. Stock copies `0x20000032` bytes 1..7 there. This image never fills those bytes with a mouse report: `0x260A` sets byte 0 to report id 5, sends eight bytes on USB, and on failure zeros bytes 2..7.
+  - Bytes 26..32 follow HID report 5: buttons, 16-bit X, 16-bit Y, 8-bit wheel, 8-bit horizontal wheel. Report id 5 itself is not copied. Movement is cleared after the frame so a later key report does not repeat it. Bit 5 of the button byte is padding and flips on each step, because a held direction repeats one delta and the radio does not forward a copy of the last payload.
   - Bytes 33 and 34 carry the consumer usage. Stock `0x4F50` stores it and queues `0xAA`; `0xA3` is not the wire opcode. A key-up keeps those bytes, and a media release keeps the current keys. System usages are not sent: `0x4F84` queues `0xAA`, and the builder never reads `0x20000045`.
   - After a report with keys, the all-keys-up report is always sent. It waits at most 50 ms for the radio to read the key-down first.
   - Each report is offered to the radio 5 times, 10 ms apart.

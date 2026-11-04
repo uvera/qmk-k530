@@ -91,6 +91,24 @@ static uint8_t          key_reserved;
 static uint8_t          key_codes[6];
 /* Stock puts this in 0xAA bytes 33 and 34. The wire opcode stays 0xAA. */
 static uint16_t         consumer_usage;
+/*
+ * Stock copies 0x20000032 bytes 1..7 into 0xAA bytes 26..32. Byte 0 of
+ * that buffer is report id 5 and is not copied. The HID descriptor for
+ * report 5 is five buttons, 16-bit X, 16-bit Y, an 8-bit wheel, and an
+ * 8-bit horizontal wheel.
+ */
+static uint8_t          mouse_buttons;
+static int16_t          mouse_x;
+static int16_t          mouse_y;
+static int8_t           mouse_v;
+static int8_t           mouse_h;
+/*
+ * The radio forwards a payload once and drops a repeat of the same bytes.
+ * That suits a held letter. A held mouse key repeats one delta, so each
+ * step flips a padding bit in the button byte (HID report 5 has five
+ * buttons and three constant bits) and the step is forwarded again.
+ */
+static uint8_t          mouse_mark;
 
 static uint8_t  link = LINK_UNKNOWN;
 static uint16_t boot_at;
@@ -292,6 +310,13 @@ static void publish_aa(uint8_t mods, uint8_t reserved, const uint8_t *keys) {
      */
     frame[33] = (uint8_t)consumer_usage;
     frame[34] = (uint8_t)(consumer_usage >> 8);
+    frame[26] = (uint8_t)((mouse_buttons & 0x1FU) | (mouse_mark << 5));
+    frame[27] = (uint8_t)mouse_x;
+    frame[28] = (uint8_t)(mouse_x >> 8);
+    frame[29] = (uint8_t)mouse_y;
+    frame[30] = (uint8_t)(mouse_y >> 8);
+    frame[31] = (uint8_t)mouse_v;
+    frame[32] = (uint8_t)mouse_h;
     frame[35] = 0x2C;
     frame[36] = 0x2C;
 
@@ -430,6 +455,8 @@ static void channel_task(void) {
 static void enter_wired(bool from_boot) {
     if (link == LINK_WIRELESS) {
         consumer_usage = 0;
+        mouse_buttons  = 0;
+        mouse_x = mouse_y = mouse_v = mouse_h = 0;
         send_release();
         wait_ms(40);
     }
@@ -776,12 +803,25 @@ void bluetooth_send_nkro(report_nkro_t *report) {
 
 void bluetooth_send_mouse(report_mouse_t *report) {
     /*
-     * Stock's 0xAA builder copies 0x20000032 bytes 1..7 into frame bytes
-     * 26..32. This image only sets byte 0 to report id 5 and, when the USB
-     * send fails, zeros bytes 2..7. Nothing writes buttons or movement,
-     * so there is no layout to follow.
+     * Buttons stay for as long as they are held. Movement is relative, so
+     * it is cleared after this frame; a later key report must not repeat it.
+     * A held direction sends the same delta again, and the padding bit
+     * makes that next frame different from the last one.
      */
-    (void)report;
+    bool moved    = report->x || report->y || report->v || report->h;
+    mouse_buttons = report->buttons;
+    mouse_x       = report->x;
+    mouse_y       = report->y;
+    mouse_v       = (int8_t)report->v;
+    mouse_h       = (int8_t)report->h;
+    if (link != LINK_WIRELESS) {
+        return;
+    }
+    if (moved) {
+        mouse_mark ^= 1U;
+    }
+    publish_aa(key_mods, key_reserved, key_codes);
+    mouse_x = mouse_y = mouse_v = mouse_h = 0;
 }
 
 void bluetooth_send_consumer(uint16_t usage) {

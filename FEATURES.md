@@ -165,7 +165,9 @@ When wired, the LED always shows the keymap's panel colour.
 
 **Host lock lights.** The radio's status reply puts the host LED byte in its third payload byte. Stock paints only bit 1 of that byte, which is Caps Lock. The port returns the whole byte, so the battery LED can also show Num Lock and Scroll Lock when the radio sets those bits. The fifth payload byte is saved and not shown: stock compares it with 1, 2, and `0xF0` for a different lamp, which is not a battery level.
 
-**Mouse.** Mouse reports are not sent over Bluetooth. Stock copies seven bytes into the key frame, and this firmware image never fills them with buttons or movement.
+**Mouse.** The same key frame carries the pointer, in the layout of the radio's HID report 5. Byte 26 is the buttons. Bytes 27–28 and 29–30 are 16-bit X and Y, least significant byte first. Byte 31 is the wheel and byte 32 is horizontal scroll. Movement is sent once so a later key does not nudge the cursor again. A held button stays until it is released. A held direction repeats the same delta, and the radio drops a frame that matches the last one, so each step flips a padding bit in the button byte.
+
+On the **VIA** keymap, hold **Down**: **W A S D** move the pointer, **Space** is left click, **Backspace** is right click, and **X C V B** are the wheel. On the **default** keymap only the clicks are bound: **FN2+Space** left, **FN2+Backspace** right.
 
 ---
 
@@ -185,5 +187,6 @@ When wired, the LED always shows the keymap's panel colour.
 | **Bluetooth LED** | Wireless: slot colour, blinking while pairing/reconnecting. Wired: keymap colour for pin `A6` (OS colour when that pin is low). |
 | **Battery LED** | B13 high: fixed colour. B13 low, VIA keymap: Caps/Num/Scroll from the host. Over Bluetooth that byte comes from the radio. |
 | **More than six keys** | Not sent over Bluetooth. The seventh key is dropped. |
+| **Mouse, VIA keymap** | Hold **Down**. **W A S D** move, **Space** left click, **Backspace** right click. |
 
 Behaviour is implemented in `keymaps/default/keymap.c` and mirrored in `keymaps/via/keymap.c`. You can rebind these keycodes in your own keymap or in VIA; the behaviour stays the same.

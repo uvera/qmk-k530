@@ -37,8 +37,10 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
 
 ## What works
 
-- Pairing (FN2 + Esc held 3 s) and reconnect (tap) per BT slot.
+- Pairing (FN2 + Esc held 3 s) and reconnect (tap) on all three slots. `Draconic -1`, `-2`, and `-3` all pair.
 - Typing over BT, including key-up.
+- Media keys (volume and mute) in the key frame.
+- Caps Lock follows the host over Bluetooth.
 - BT case LED 62 shows the radio state and, dimly, the active slot.
 
 ## Lessons that cost the most time
@@ -61,14 +63,6 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
 
 ## Open items
 
-- **BT2 connect/drop loop.** `FB:E9:91:84:A9:77` (`Draconic -2`) connects and
-  drops every ~2 s ("ACL packet for unknown connection handle" in
-  `journalctl -k`). Slot 1 (`FB:E9:91:84:89:77`) is fine. The slots have
-  different addresses; the likely cause is a bad bond from a pairing
-  attempt without an agent. The BlueZ entry was removed; next step is to
-  re-pair slot 2 with `k530_pair.sh` and check whether the loop stops.
-  If it persists after a clean pair, compare with stock firmware on the
-  same slot.
 - **Git history.** An amend squashed `548965e` ("set debounce to 10ms")
   and a WIP commit into `aa167de`. The content is all there; the history
   could be rebuilt if wanted.
@@ -77,10 +71,9 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
   Lock) on LED `0x3F`, and clears the byte while wired. Bytes 3, 4, and
   5 are all stored. Byte 5 (`0x200000C1`) is read at `0x65A0` for the
   values 1, 2, and `0xF0`; that is a separate lamp, not a battery level,
-  so the battery LED is not driven from it.
-- **Mouse bytes.** Stock copies `0x20000032` bytes 1..7 into `0xAA`
-  bytes 26..32. This image sets byte 0 to report id 5 and zeros bytes
-  2..7 when the USB send fails. It never writes buttons or movement, so
-  `bluetooth_send_mouse()` stays empty.
+  so the battery LED is not driven from it. Caps Lock was confirmed on
+  the board. Num Lock and Scroll Lock use the same byte and were not
+  checked separately.
+- **Mouse bytes.** `0xAA` bytes 26..32 follow the stock HID report 5: buttons, 16-bit X, 16-bit Y, 8-bit wheel, 8-bit pan. Buttons stay while held. Movement is cleared after the frame. A held direction repeats one delta, and the radio does not forward a copy of the last payload, so each step flips bit 5 of the button byte (padding in that report).
 - **Media keys.** Consumer usages are bytes 33 and 34 of an `0xAA` frame. System keys are not sent. Key frames, repeats, and deferred copies pulse ready without disabling `SPI0_IRQn`. Boot and `zero_pulse()` still reinitialize SPI.
-- Not done: battery level. System keys over BT.
+- Not done: battery level. System keys over BT. Mouse clicks, movement, and the wheel were confirmed on the VIA keymap.
