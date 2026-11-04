@@ -8,7 +8,7 @@ This document explains the **default and VIA keymaps** for the K530 Devarajas: l
 
 The K530 has hardware that many other Redragon boards don’t:
 
-- **Two DIP switches** – set connection type (Win/Android vs Mac/iOS) and power mode (cable vs battery).
+- **Two switch pins** – the Bluetooth slot sense line, and the cable/wireless switch.
 - **Three extra LEDs** – one on a key (layer indicator) and two on the case (Bluetooth and Battery/status).
 
 The keymaps use **layers**: you hold a key to get a different set of actions (F-keys, RGB, reboot, etc.) and release to go back to normal typing. No need to remember everything; the **Quick reference** table at the end covers the main actions.
@@ -30,16 +30,14 @@ A **layer** is an extra keymap that is active only while you hold a modifier key
 
 ---
 
-## 2. DIP switches (on the board)
+## 2. Switch pins
 
-Two physical switches on the keyboard are read by the firmware. You don’t press any key – just flip the switch.
+QMK lists two pins as DIP switches. They are not a Win/Mac switch and a power switch.
 
-| Switch | ON | OFF |
-|--------|-----|-----|
-| **DIP 0** | **Win/Android** – Bluetooth LED shows a simple “connected” style. | **Mac/iOS** – Bluetooth LED shows the **detected OS** color (see section 4). |
-| **DIP 1** | **Cable** – Battery LED shows a fixed status; RGB can stay on when the PC is asleep. | **Battery (BT)** – Battery LED shows Caps/Num/Scroll lock; RGB turns off when the PC sleeps. |
-
-So: DIP 0 = “how the Bluetooth LED behaves,” DIP 1 = “plugged in vs battery” and “RGB in sleep.”
+| Pin | What it is | What the keymap does with it |
+|-----|------------|------------------------------|
+| **A6** (called DIP 0) | Bluetooth slot sense line. `A7` is driven low, then high, and `A6` is sampled both times to read BT1, BT2, or BT3. | The keymap still treats this pin as Win/Mac. `A7` is left high, so slots 1 and 2 read high and slot 3 reads low. While wireless, the slot colour on LED 62 covers that. While wired, a low reading shows the OS colour in section 4. |
+| **B13** (called DIP 1) | Cable/wireless switch (P1.13). | High is cable: the battery LED uses a fixed colour, and RGB can stay on while the PC sleeps. Low is wireless: the battery LED follows the host lock lights, and RGB turns off when the PC sleeps. |
 
 ---
 
@@ -50,14 +48,14 @@ The K530 has **63 RGB LEDs**: 60 under the keys and **3 extra** used for status.
 | LED | Where it is | What it shows |
 |-----|-------------|----------------|
 | **Indicator (key LED 28)** | One of the key LEDs (e.g. above a modifier) | **Current layer**: Red = FN1, Green = FN2, Blue = FN3. On BASE it follows the normal RGB effect. With layer mask on, it still shows the layer colour. |
-| **Battery LED (61)** | On the case (battery/status) | **DIP 1 ON (cable):** fixed colour. **DIP 1 OFF (BT):** Caps lock (red), Num lock (green), Scroll lock (blue). |
-| **Bluetooth LED (62)** | On the case (Bluetooth) | **Wireless:** Bluetooth status in the slot colour (see section 10). **Wired:** **DIP 0 ON (Win/Android):** “connected” style. **DIP 0 OFF (Mac/iOS):** colour by **detected OS** (see next section). |
+| **Battery LED (61)** | On the case (battery/status) | **B13 high (cable):** fixed colour. **B13 low:** the VIA keymap shows the host lock lights. Over Bluetooth those come from the radio (see section 10). The default keymap keeps a fixed blue. |
+| **Bluetooth LED (62)** | On the case (Bluetooth) | **Wireless:** slot colour (see section 10). **Wired:** the keymap's colour for pin `A6`, including the OS colour in the next section when that pin reads low. |
 
 ---
 
-## 4. OS detection (Bluetooth LED when DIP 0 = Mac/iOS)
+## 4. OS detection (Bluetooth LED while wired, pin A6 low)
 
-When **DIP 0 is OFF** (Mac/iOS mode), the firmware tries to detect which OS the keyboard is connected to and sets the **Bluetooth LED** colour:
+The OS colour is only visible while the keyboard is wired. While wireless, LED 62 shows the Bluetooth slot instead. The keymap shows it when pin `A6` reads low, which is Bluetooth slot 3, not a Mac/iOS switch.
 
 | Detected OS | Bluetooth LED |
 |-------------|----------------|
@@ -66,7 +64,7 @@ When **DIP 0 is OFF** (Mac/iOS mode), the firmware tries to detect which OS the 
 | Windows | Blue |
 | macOS | Magenta |
 
-So you can see at a glance which OS the keyboard thinks it’s talking to (in Mac/iOS mode).
+So while wired, with the slot switch on BT3, the Bluetooth LED shows which OS the keyboard thinks it is talking to.
 
 ---
 
@@ -161,6 +159,12 @@ The board talks to its PixArt PAR2801 radio over SPI (`k530_bt.c`). The radio do
 
 When wired, the LED always shows the keymap's panel colour.
 
+**Six keys.** A Bluetooth report carries at most six keys. A seventh is dropped. The overflow area of the radio frame (bytes 11..25) stays zero; filling it made the radio emit a second report.
+
+**Host lock lights.** The radio's status reply puts the host LED byte in its third payload byte. Stock paints only bit 1 of that byte, which is Caps Lock. The port returns the whole byte, so the battery LED can also show Num Lock and Scroll Lock when the radio sets those bits. The fifth payload byte is saved and not shown: stock compares it with 1, 2, and `0xF0` for a different lamp, which is not a battery level.
+
+**Mouse.** Mouse reports are not sent over Bluetooth. Stock copies seven bytes into the key frame, and this firmware image never fills them with buttons or movement.
+
 ---
 
 ## 11. Quick reference
@@ -171,12 +175,13 @@ When wired, the LED always shows the keymap's panel colour.
 | **Reboot (no bootloader)** | FN2 → key **above Q** (MY_REBOOT / QK_REBOOT). |
 | **Layer mask on/off** | FN2 → **Q** toggles (QK_LAYER_MASK / CS_LAYER_MASK_F). Or bind CS_LAYER_MASK_B for “off only”. |
 | **Panel LEDs on/off** | Bind QK_TOGGLE_PANEL_LED or RD_PANEL_TG to a key and press it. |
-| **Win vs Mac / Cable vs BT** | Use the **DIP switches** on the board. |
+| **Cable vs wireless** | **B13** switch. Pin `A6` is the Bluetooth slot sense line, not a Win/Mac switch. |
 | **Pair a Bluetooth host** | Hold **Down**, hold **Esc** 3 s, then pair `Draconic -N` on the host. |
 | **Reconnect Bluetooth** | Hold **Down**, tap **Esc**. |
 | **Bluetooth slot** | BT1/BT2/BT3 switch. |
 | **Indicator LED** | Shows current layer (red/green/blue); automatic. |
-| **Bluetooth LED** | Wireless: slot colour, blinking while pairing/reconnecting. Wired: DIP 0 OFF = OS colour; DIP 0 ON = “connected” style. |
-| **Battery LED** | DIP 1 ON = cable; DIP 1 OFF = Caps/Num/Scroll lock. |
+| **Bluetooth LED** | Wireless: slot colour, blinking while pairing/reconnecting. Wired: keymap colour for pin `A6` (OS colour when that pin is low). |
+| **Battery LED** | B13 high: fixed colour. B13 low, VIA keymap: Caps/Num/Scroll from the host. Over Bluetooth that byte comes from the radio. |
+| **More than six keys** | Not sent over Bluetooth. The seventh key is dropped. |
 
 Behaviour is implemented in `keymaps/default/keymap.c` and mirrored in `keymaps/via/keymap.c`. You can rebind these keycodes in your own keymap or in VIA; the behaviour stays the same.

@@ -161,7 +161,8 @@ SPI0 at priority 1 fixes all of it.
 - **Status byte:** 0 in every frame.
 - **Key reports (`0xAA`):**
   - Layout is stock's: mods, reserved and six keys in bytes 3..10, then `0x2C` in bytes 35 and 36.
-  - The overflow bitmap (bytes 11..25) stays zero, as stock leaves it with six or fewer keys down.
+  - The overflow bitmap (bytes 11..25) stays zero. A seventh key is dropped. Stock copies its NKRO bitmap there once six slots are full, and that made the radio emit an extra report.
+  - Bytes 26..32 stay zero. Stock copies `0x20000032` bytes 1..7 there. This image never fills those bytes with a mouse report: `0x260A` sets byte 0 to report id 5, sends eight bytes on USB, and on failure zeros bytes 2..7.
   - After a report with keys, the all-keys-up report is always sent. It waits at most 50 ms for the radio to read the key-down first.
   - Each report is offered to the radio 5 times, 10 ms apart.
 - **Wired or wireless:**
@@ -170,6 +171,7 @@ SPI0 at priority 1 fixes all of it.
 - **`K530_BT_PAIR` (FN2+Esc):** a tap sends the reconnect `0xA6` (byte 3 = 2), and a 3 s hold sends the pair `0xA6` (byte 3 = 1). Both follow a zero pulse and carry the switch channel in byte 4. The 55-tick hold time has not been measured, so 3 s is an estimate.
 - **Channel switch:** a channel that differs from the last one sent for 500 ms sends the reconnect `0xA6`, as `0x56B6` does.
 - **Bluetooth LED (62):** stock's blink pattern in the channel colour, then dim instead of off while wireless.
+- **Host LED byte:** `0xA7` byte 3, stored by stock at `0x200000C0` and returned from `bluetooth_keyboard_leds()`. `0x6572` paints bit 1 (Caps Lock) and forces the byte to 0 while wired and `0x2000006E` has reached 10. Byte 5 (`0x200000C1`) is read at `0x65A0`: `0xF0` with P1.14 high, or 1 or 2 with P1.14 low, drives a different lamp. It is stored and not displayed.
 
 ## Host side
 

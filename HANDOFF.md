@@ -49,7 +49,8 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
   and typing only when mashing keys.
 - **0xAA frame layout.** Byte 2 = 0, mods/reserved/6 keys in bytes 3..10,
   bitmap bytes 11..25 zero, 0x2C in bytes 35 and 36, checksum in byte 38.
-  Filling the bitmap makes the radio send an extra report.
+  Filling the bitmap makes the radio send an extra report. Bluetooth
+  therefore stays at six keys; a seventh is dropped.
 - **Key-up.** Always publish the empty report after a keyed one, waiting
   at most 50 ms for the key-down to be read. Each 0xAA is re-pulsed 5
   times, 10 ms apart; more made things worse.
@@ -71,5 +72,14 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
 - **Git history.** An amend squashed `548965e` ("set debounce to 10ms")
   and a WIP commit into `aa167de`. The content is all there; the history
   could be rebuilt if wanted.
-- Not done: consumer/system keys over BT are sent but untested; battery
-  level and host LED state (`bluetooth_keyboard_leds`) aren't implemented.
+- **Host LED byte.** `0xA7` byte 3 (`0x200000C0`) is returned from
+  `bluetooth_keyboard_leds()`. Stock `0x6572` paints only bit 1 (Caps
+  Lock) on LED `0x3F`, and clears the byte while wired. Bytes 3, 4, and
+  5 are all stored. Byte 5 (`0x200000C1`) is read at `0x65A0` for the
+  values 1, 2, and `0xF0`; that is a separate lamp, not a battery level,
+  so the battery LED is not driven from it.
+- **Mouse bytes.** Stock copies `0x20000032` bytes 1..7 into `0xAA`
+  bytes 26..32. This image sets byte 0 to report id 5 and zeros bytes
+  2..7 when the USB send fails. It never writes buttons or movement, so
+  `bluetooth_send_mouse()` stays empty.
+- Not done: consumer/system keys over BT; battery level.

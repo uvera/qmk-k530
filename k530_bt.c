@@ -68,7 +68,14 @@ static volatile uint8_t publish_seq;
 static volatile uint8_t txn_seq;
 static uint16_t         txn_idle_at;
 
-static volatile uint8_t  module_state; /* 0xA7 byte 4 */
+/*
+ * 0xA7 bytes 3, 4, and 5, as stock stores them at 0x200000C0, 0x200000BF,
+ * and 0x200000C1. Byte 4 is the connection state. Byte 3 is the host LED
+ * byte: stock 0x6572 paints bit 1 (Caps Lock) and clears the byte while
+ * wired. Byte 5 is read at 0x65A0 (values 1, 2, and 0xF0) for a different
+ * lamp; it is kept and not shown.
+ */
+static volatile uint8_t  module_stat[3];
 static volatile uint8_t  module_seen;
 static volatile uint16_t a7_seen_at; /* last 0xA7 reply */
 static uint16_t          aa_sent_at;
@@ -273,7 +280,7 @@ static void send_a6(uint8_t action) {
     frame[0]       = 0xA6;
     frame[3]       = action;
     frame[4]       = bt_channel;
-    module_state   = 0;
+    module_stat[1] = 0;
     sent_channel   = bt_channel;
     radio_state    = action;
     state_hold_at  = timer_read();
@@ -295,7 +302,7 @@ static void radio_state_task(void) {
         a7_used_at = seen;
         if (!state_hold_ms || (uint16_t)(seen - state_hold_at) >= 1000) {
             state_hold_ms = 0;
-            set_radio_state(module_state);
+            set_radio_state(module_stat[1]);
         }
     }
     if (state_hold_ms && timer_elapsed(state_hold_at) > state_hold_ms) {
@@ -436,7 +443,8 @@ static void load_keyboard(const report_keyboard_t *report) {
     /*
      * Bytes 11..25 stay zero. Stock (0x442A) fills its overflow bitmap
      * there only once all six key slots are taken, and the radio forwards
-     * those bytes as an extra report on top of the six keys.
+     * those bytes as an extra report. bluetooth_can_send_nkro() is false,
+     * so a seventh key is dropped instead of going into that bitmap.
      */
     frame[35] = 0x2C;
     frame[36] = 0x2C;
@@ -523,9 +531,11 @@ OSAL_IRQ_HANDLER(SN32_SPI0_HANDLER) {
         }
         /* Stock 0x9DAA: a received frame whose byte 0 is 0xA7 is the status reply. */
         if (data == rx_sum && rx[0] == 0xA7) {
-            module_state = rx[4];
-            module_seen  = 1;
-            a7_seen_at   = timer_read();
+            module_stat[0] = rx[3];
+            module_stat[1] = rx[4];
+            module_stat[2] = rx[5];
+            module_seen    = 1;
+            a7_seen_at     = timer_read();
         }
     }
 
@@ -615,11 +625,13 @@ bool bluetooth_is_connected(void) {
 }
 
 bool bluetooth_can_send_nkro(void) {
+    /* Six keys over the radio. The overflow bitmap is left empty. */
     return false;
 }
 
 uint8_t bluetooth_keyboard_leds(void) {
-    return 0;
+    /* 0xA7 byte 3. Stock paints bit 1; the keymap reads the whole byte. */
+    return module_stat[0];
 }
 
 static bool report_is_empty(const report_keyboard_t *report) {
@@ -727,6 +739,12 @@ void bluetooth_send_nkro(report_nkro_t *report) {
 }
 
 void bluetooth_send_mouse(report_mouse_t *report) {
+    /*
+     * Stock's 0xAA builder copies 0x20000032 bytes 1..7 into frame bytes
+     * 26..32. This image only sets byte 0 to report id 5 and, when the USB
+     * send fails, zeros bytes 2..7. Nothing writes buttons or movement,
+     * so there is no layout to follow.
+     */
     (void)report;
 }
 
