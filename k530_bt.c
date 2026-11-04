@@ -85,6 +85,12 @@ static uint8_t           repulses;
 static volatile uint8_t hold_key;
 static volatile uint8_t need_release;
 static bool             keys_down; /* the last report published carried a key */
+/* Last wireless key report, republished when a media usage changes. */
+static uint8_t          key_mods;
+static uint8_t          key_reserved;
+static uint8_t          key_codes[6];
+/* Stock puts this in 0xAA bytes 33 and 34. The wire opcode stays 0xAA. */
+static uint16_t         consumer_usage;
 
 static uint8_t  link = LINK_UNKNOWN;
 static uint16_t boot_at;
@@ -250,15 +256,64 @@ static void zero_pulse(void) {
     wait_ms(20);
 }
 
+static void remember_report(const report_keyboard_t *report) {
+    key_mods     = report->mods;
+    key_reserved = report->reserved;
+    uint8_t nkeys = KEYBOARD_REPORT_KEYS;
+    if (nkeys > 6) {
+        nkeys = 6;
+    }
+    for (uint8_t i = 0; i < 6; i++) {
+        key_codes[i] = (i < nkeys) ? report->keys[i] : 0;
+    }
+}
+
+/*
+ * Stock 0x360. Bytes 33 and 34 are the consumer usage from 0x20000042.
+ * A key-up keeps a held media key, and a media release keeps held letters.
+ */
+static void publish_aa(uint8_t mods, uint8_t reserved, const uint8_t *keys) {
+    clear_frame();
+    frame[0] = 0xAA;
+    frame[2] = K530_BT_REPORT_STATUS;
+    frame[3] = mods;
+    frame[4] = reserved;
+    for (uint8_t i = 0; i < 6; i++) {
+        frame[5 + i] = keys ? keys[i] : 0;
+    }
+    /*
+     * Bytes 11..25 stay zero. Stock (0x442A) fills its overflow bitmap
+     * there only once all six key slots are taken, and the radio forwards
+     * those bytes as an extra report. bluetooth_can_send_nkro() is false,
+     * so a seventh key is dropped instead of going into that bitmap.
+     */
+    frame[33] = (uint8_t)consumer_usage;
+    frame[34] = (uint8_t)(consumer_usage >> 8);
+    frame[35] = 0x2C;
+    frame[36] = 0x2C;
+
+    bool keyed = mods != 0;
+    for (uint8_t i = 0; keyed == false && keys && i < 6; i++) {
+        keyed = keys[i] != 0;
+    }
+    if (keyed) {
+        hold_key     = 1;
+        keys_down    = true;
+        need_release = 0;
+        aa_sent_at   = timer_read();
+    }
+    publish_frame();
+}
+
 static void send_release(void) {
     hold_key     = 0;
     need_release = 0;
-    clear_frame();
-    frame[0]  = 0xAA;
-    frame[2]  = K530_BT_REPORT_STATUS;
-    frame[35] = 0x2C;
-    frame[36] = 0x2C;
-    publish_frame();
+    key_mods     = 0;
+    key_reserved = 0;
+    for (uint8_t i = 0; i < 6; i++) {
+        key_codes[i] = 0;
+    }
+    publish_aa(0, 0, key_codes);
 }
 
 /* Stock 0x30E: bytes 4 and 5 are always 10 and 25, byte 7 is the link byte. */
@@ -371,6 +426,7 @@ static void channel_task(void) {
 
 static void enter_wired(bool from_boot) {
     if (link == LINK_WIRELESS) {
+        consumer_usage = 0;
         send_release();
         wait_ms(40);
     }
@@ -426,30 +482,8 @@ static void link_task(void) {
 }
 
 static void load_keyboard(const report_keyboard_t *report) {
-    clear_frame();
-    frame[0] = 0xAA;
-    frame[2] = K530_BT_REPORT_STATUS;
-    frame[3] = report->mods;
-    frame[4] = report->reserved;
-
-    uint8_t nkeys = KEYBOARD_REPORT_KEYS;
-    if (nkeys > 6) {
-        nkeys = 6;
-    }
-    for (uint8_t i = 0; i < 6; i++) {
-        frame[5 + i] = (i < nkeys) ? report->keys[i] : 0;
-    }
-
-    /*
-     * Bytes 11..25 stay zero. Stock (0x442A) fills its overflow bitmap
-     * there only once all six key slots are taken, and the radio forwards
-     * those bytes as an extra report. bluetooth_can_send_nkro() is false,
-     * so a seventh key is dropped instead of going into that bitmap.
-     */
-    frame[35] = 0x2C;
-    frame[36] = 0x2C;
-
-    publish_frame();
+    remember_report(report);
+    publish_aa(key_mods, key_reserved, key_codes);
 }
 
 OSAL_IRQ_HANDLER(SN32_SPI0_HANDLER) {
@@ -599,7 +633,6 @@ void bluetooth_task(void) {
         copy_tx();
         chSysUnlock();
         repulses = 0;
-        spi_slave_init();
         ready_pulse();
         return;
     }
@@ -610,7 +643,6 @@ void bluetooth_task(void) {
      */
     if (link == LINK_WIRELESS && tx[0] == 0xAA && !txn_open && repulses < K530_BT_REPULSE_MAX && timer_elapsed(pulsed_at) >= K530_BT_REPULSE_MS) {
         repulses++;
-        spi_slave_init();
         ready_pulse();
     }
 }
@@ -660,6 +692,7 @@ void bluetooth_send_keyboard(report_keyboard_t *report) {
      * bluetooth_task.
      */
     if (report_is_empty(report)) {
+        remember_report(report);
         if (keys_down) {
             keys_down    = false;
             need_release = 1;
@@ -749,16 +782,23 @@ void bluetooth_send_mouse(report_mouse_t *report) {
 }
 
 void bluetooth_send_consumer(uint16_t usage) {
-    frame[0]  = 0xA3;
-    frame[33] = (uint8_t)usage;
-    frame[34] = (uint8_t)(usage >> 8);
-    publish_frame();
+    /*
+     * Stock 0x4F50 stores the usage and queues 0xAA. Bytes 33 and 34 of
+     * that frame carry it. 0xA3 never goes on the wire.
+     */
+    consumer_usage = usage;
+    if (link != LINK_WIRELESS) {
+        return;
+    }
+    publish_aa(key_mods, key_reserved, key_codes);
 }
 
 void bluetooth_send_system(uint16_t usage) {
-    frame[33] = (uint8_t)usage;
-    frame[34] = (uint8_t)(usage >> 8);
-    publish_frame();
+    /*
+     * Stock 0x4F84 queues 0xAA as well, but the 0xAA builder never reads
+     * the system buffer at 0x20000045. Leave the key frame alone.
+     */
+    (void)usage;
 }
 
 void bluetooth_send_raw_hid(uint8_t *data, uint8_t length) {

@@ -82,4 +82,5 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
   bytes 26..32. This image sets byte 0 to report id 5 and zeros bytes
   2..7 when the USB send fails. It never writes buttons or movement, so
   `bluetooth_send_mouse()` stays empty.
-- Not done: consumer/system keys over BT; battery level.
+- **Media keys.** Consumer usages are bytes 33 and 34 of an `0xAA` frame. System keys are not sent. Repeats and deferred frame copies pulse ready without disabling `SPI0_IRQn`. The first pulse of a new frame still reinitializes SPI until that is tried on hardware.
+- Not done: battery level. System keys over BT. Dropping SPI init from the first pulse of a frame, after a hardware test of the repeat-only change.

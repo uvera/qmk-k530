@@ -161,6 +161,8 @@ When wired, the LED always shows the keymap's panel colour.
 
 **Six keys.** A Bluetooth report carries at most six keys. A seventh is dropped. The overflow area of the radio frame (bytes 11..25) stays zero; filling it made the radio emit a second report.
 
+**Media keys.** Volume and mute go out in the same key frame, bytes 33 and 34. A media key-up clears those bytes and leaves any held letters in place. System keys (power, sleep) are not sent: the stock image queues a key frame for them but never copies the system usage into it.
+
 **Host lock lights.** The radio's status reply puts the host LED byte in its third payload byte. Stock paints only bit 1 of that byte, which is Caps Lock. The port returns the whole byte, so the battery LED can also show Num Lock and Scroll Lock when the radio sets those bits. The fifth payload byte is saved and not shown: stock compares it with 1, 2, and `0xF0` for a different lamp, which is not a battery level.
 
 **Mouse.** Mouse reports are not sent over Bluetooth. Stock copies seven bytes into the key frame, and this firmware image never fills them with buttons or movement.
