@@ -14,8 +14,8 @@ Protocol details live in `stock_radio.md`; user-facing behaviour in
 - The VIA build is RAM-tight. Adding statics to `k530_bt.c` overflowed it
   by 8 bytes once; keep new buffers small.
 - `CONSOLE_ENABLE` builds break USB enumeration (only interface 0 comes
-  up). The log ring in `k530_bt.c` is kept but can't be used in practice.
-  Debug with the status display (FN2 + 1) instead.
+  up). The debug keys, the status display (FN2 + 1) and the console log
+  ring were removed once BT worked; `80919fe` still has them.
 
 ## Reverse-engineering material (not in git)
 
@@ -39,7 +39,7 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
 
 - Pairing (FN2 + Esc held 3 s) and reconnect (tap) per BT slot.
 - Typing over BT, including key-up.
-- BT case LED 62 shows the radio state (commit `fed2cef`).
+- BT case LED 62 shows the radio state and, dimly, the active slot.
 
 ## Lessons that cost the most time
 
@@ -68,10 +68,6 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
   re-pair slot 2 with `k530_pair.sh` and check whether the loop stops.
   If it persists after a clean pair, compare with stock firmware on the
   same slot.
-- **Debug aids to remove** once BT is stable: `K530_BT_PROBE`,
-  `K530_BT_WIRELESS`, `K530_BT_RESTORE`, the console log ring, and
-  possibly the status display. They're bound on FN2's top row in both
-  keymaps.
 - **Git history.** An amend squashed `548965e` ("set debounce to 10ms")
   and a WIP commit into `aa167de`. The content is all there; the history
   could be rebuilt if wanted.

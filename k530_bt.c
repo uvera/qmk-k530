@@ -44,6 +44,7 @@
 #define K530_BT_PAIR_TIMEOUT_MS 60000
 #define K530_BT_RECONNECT_TIMEOUT_MS 10000
 #define K530_BT_CONNECTED_SHOW_MS 2000
+#define K530_BT_IDLE_LEVEL 48
 
 enum k530_link {
     LINK_UNKNOWN,
@@ -67,53 +68,10 @@ static volatile uint8_t publish_seq;
 static volatile uint8_t txn_seq;
 static uint16_t         txn_idle_at;
 
-static volatile uint8_t module_stat[3];
-static volatile uint8_t module_seen;
-static volatile uint8_t  a6_clocked;
-static volatile uint8_t  last_opcode;
-static volatile uint8_t  last_rx0; /* frame byte 0 of the last transfer */
-static volatile uint8_t  last_len; /* bytes after the opcode in the last transfer */
-static volatile uint16_t a7_seen_at;   /* last 0xA7 reply */
-static volatile uint16_t xfer_seen_at; /* last completed transfer */
-static volatile uint16_t aa_seen_at;   /* last key report read with 0xA2 */
+static volatile uint8_t  module_state; /* 0xA7 byte 4 */
+static volatile uint8_t  module_seen;
+static volatile uint16_t a7_seen_at; /* last 0xA7 reply */
 static uint16_t          aa_sent_at;
-static volatile uint8_t  clocked_seq; /* publish_seq of the last frame read with 0xA2 */
-
-#ifdef CONSOLE_ENABLE
-#    include "print.h"
-/* Event ring filled from the SPI IRQ and the main loop, printed by bluetooth_task. */
-#    define K530_LOG_LEN 16
-static volatile uint8_t log_ring[K530_LOG_LEN][4];
-static volatile uint8_t log_head;
-static uint8_t          log_tail;
-
-static void log_event(uint8_t type, uint8_t a, uint8_t b, uint8_t c) {
-    uint8_t slot = log_head & (K530_LOG_LEN - 1);
-    log_ring[slot][0] = type;
-    log_ring[slot][1] = a;
-    log_ring[slot][2] = b;
-    log_ring[slot][3] = c;
-    log_head++;
-}
-
-static void log_flush(void) {
-    while (log_tail != log_head) {
-        uint8_t slot = log_tail & (K530_LOG_LEN - 1);
-        uprintf("%5u %c %02X %02X %02X\n", timer_read() % 100000U, log_ring[slot][0], log_ring[slot][1], log_ring[slot][2], log_ring[slot][3]);
-        log_tail++;
-    }
-}
-#    define LOG_EVENT(t, a, b, c) log_event(t, a, b, c)
-#    define LOG_THREAD(t, a, b, c) \
-        do {                        \
-            chSysLock();            \
-            log_event(t, a, b, c);  \
-            chSysUnlock();          \
-        } while (0)
-#else
-#    define LOG_EVENT(t, a, b, c)
-#    define LOG_THREAD(t, a, b, c)
-#endif
 static uint16_t          pulsed_at;
 static uint8_t           repulses;
 
@@ -135,9 +93,6 @@ static uint16_t channel_changed_at;
 static bool     pair_held;
 static bool     pair_long_sent;
 static uint16_t pair_pressed_at;
-static uint8_t  pair_last; /* 0 none, 1 reconnect, 2 pair */
-
-static bool status_on;
 
 /*
  * Module state for the Bluetooth LED, as stock keeps it in 0x200000BF:
@@ -240,7 +195,6 @@ static void publish_frame(void) {
     }
     frame[K530_BT_FRAME_LEN - 1] = sum;
     publish_seq++;
-    LOG_THREAD('P', frame[0], frame[5], publish_seq);
 
     /*
      * A transfer already on the wire keeps the bytes it started with.
@@ -319,8 +273,7 @@ static void send_a6(uint8_t action) {
     frame[0]       = 0xA6;
     frame[3]       = action;
     frame[4]       = bt_channel;
-    module_stat[1] = 0;
-    a6_clocked     = 0;
+    module_state   = 0;
     sent_channel   = bt_channel;
     radio_state    = action;
     state_hold_at  = timer_read();
@@ -342,7 +295,7 @@ static void radio_state_task(void) {
         a7_used_at = seen;
         if (!state_hold_ms || (uint16_t)(seen - state_hold_at) >= 1000) {
             state_hold_ms = 0;
-            set_radio_state(module_stat[1]);
+            set_radio_state(module_state);
         }
     }
     if (state_hold_ms && timer_elapsed(state_hold_at) > state_hold_ms) {
@@ -405,21 +358,8 @@ static void channel_task(void) {
         channel_changed_at = timer_read();
     }
     if (link == LINK_WIRELESS && bt_channel != sent_channel && !pair_held && timer_elapsed(channel_changed_at) > 500 && !txn_open && !pulse_pending) {
-        pair_last = 1;
         send_a6(2);
     }
-}
-
-/*
- * Stock 0xA8 action: byte 3 is state[23], which flash holds as 1. The
- * action also stores status byte 2. Nothing in stock binds it to a key.
- */
-static void send_a8_default(void) {
-    clear_frame();
-    frame[0] = 0xA8;
-    frame[2] = 2;
-    frame[3] = 1;
-    publish_frame();
 }
 
 static void enter_wired(bool from_boot) {
@@ -575,29 +515,17 @@ OSAL_IRQ_HANDLER(SN32_SPI0_HANDLER) {
         burst    = 0;
         SN_SPI0->CTRL0 = (SN_SPI0->CTRL0 & ~0xC0U) | 0xC0U;
 
-        xfer_seen_at = timer_read();
-        last_opcode  = first_byte;
-        last_rx0     = rx[0];
-        last_len     = rx_count;
-        LOG_EVENT(txn_seq == publish_seq ? 'X' : 'x', first_byte, tx[0], tx[5]);
         if (first_byte == 0xA2 && txn_seq == publish_seq) {
-            clocked_seq = txn_seq;
             bool keyed = (tx[3] | tx[5] | tx[6] | tx[7] | tx[8] | tx[9] | tx[10]) != 0;
             if (tx[0] == 0xAA && keyed) {
                 hold_key = 0;
-                aa_seen_at = timer_read();
-            }
-            if (tx[0] == 0xA6) {
-                a6_clocked = 1;
             }
         }
         /* Stock 0x9DAA: a received frame whose byte 0 is 0xA7 is the status reply. */
         if (data == rx_sum && rx[0] == 0xA7) {
-            module_stat[0] = rx[3];
-            module_stat[1] = rx[4];
-            module_stat[2] = rx[5];
-            module_seen    = 1;
-            a7_seen_at     = timer_read();
+            module_state = rx[4];
+            module_seen  = 1;
+            a7_seen_at   = timer_read();
         }
     }
 
@@ -623,14 +551,10 @@ static void pair_task(void) {
         return;
     }
     pair_long_sent = true;
-    pair_last      = 2;
     send_a6(1);
 }
 
 void bluetooth_task(void) {
-#ifdef CONSOLE_ENABLE
-    log_flush();
-#endif
     /*
      * A short clock burst leaves the transfer open, and the ready line is
      * then held until 39 bytes arrive. The radio never gets another pulse.
@@ -640,10 +564,6 @@ void bluetooth_task(void) {
     if (idle) {
         if (timer_elapsed(txn_idle_at) > 5) {
             if (txn_open && rx_count < 39) {
-                last_opcode = first_byte;
-                last_rx0    = rx[0];
-                last_len    = rx_count;
-                LOG_THREAD('I', rx_count, first_byte, 0);
                 txn_open = 0;
             }
             burst = 0;
@@ -680,7 +600,6 @@ void bluetooth_task(void) {
      */
     if (link == LINK_WIRELESS && tx[0] == 0xAA && !txn_open && repulses < K530_BT_REPULSE_MAX && timer_elapsed(pulsed_at) >= K530_BT_REPULSE_MS) {
         repulses++;
-        LOG_THREAD('R', repulses, tx[5], publish_seq);
         spi_slave_init();
         ready_pulse();
     }
@@ -756,43 +675,8 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
             } else if (pair_held) {
                 pair_held = false;
                 if (!pair_long_sent) {
-                    pair_last = 1;
                     send_a6(2);
                 }
-            }
-            return false;
-        case K530_BT_WIRELESS:
-            /* Stock runtime switch to wireless: 0xA5 with byte 3 = 0, byte 7 = 2. */
-            if (record->event.pressed && link == LINK_WIRELESS) {
-                send_a5(0, 2);
-            }
-            return false;
-        case K530_BT_PROBE:
-            if (link != LINK_WIRELESS) {
-                return false;
-            }
-            if (record->event.pressed) {
-                clear_frame();
-                frame[0] = 0xAA;
-                frame[2] = K530_BT_REPORT_STATUS;
-                for (uint8_t j = 3; j <= 36; j++) {
-                    frame[j] = 4 + j - 3;
-                }
-                hold_key     = 1;
-                need_release = 0;
-                publish_frame();
-            } else {
-                need_release = 1;
-            }
-            return false;
-        case K530_BT_STATUS:
-            if (record->event.pressed) {
-                status_on = !status_on;
-            }
-            return false;
-        case K530_BT_RESTORE:
-            if (record->event.pressed && link == LINK_WIRELESS) {
-                send_a8_default();
             }
             return false;
     }
@@ -805,62 +689,28 @@ static void set_led(uint8_t led_min, uint8_t led_max, uint8_t led, uint8_t r, ui
     }
 }
 
-static void paint_bits(uint8_t led_min, uint8_t led_max, uint8_t base, uint8_t value) {
-    for (uint8_t bit = 0; bit < 8; bit++) {
-        uint8_t v = (value & (1U << bit)) ? 255 : 0;
-        set_led(led_min, led_max, base + bit, v, v, v);
-    }
-}
-
-static void paint_level(uint8_t led_min, uint8_t led_max, uint8_t led, bool high) {
-    if (high) {
-        set_led(led_min, led_max, led, 255, 255, 255);
-    } else {
-        set_led(led_min, led_max, led, 60, 0, 0);
-    }
-}
-
-/*
- * Status display, toggled with K530_BT_STATUS:
- *   Esc  P1.13      1  P1.14      2  A6       (white high, dim red low)
- *   3    USB up     4  link: blue wireless, red wired, yellow undecided
- *   5    module state from 0xA7 byte 4: red 0, yellow 1, green 2,
- *        purple other, off before the first 0xA7. Stock blinks the
- *        channel LED for 1 and 2 and treats 0 as quiet.
- *   6    last 0xA6: cyan reconnect, purple pair
- *   7    BT switch channel: red 0, green 1, blue 2
- *   8    last 0xA6 read by the radio with 0xA2: green yes, red not yet
- *   9    white while 0xA7 replies arrived in the last 2 s
- *   0    white while any transfer completed in the last 2 s
- *   -    key report in the last 2 s: green read by the radio, red not read
- *   =    opcode of the last transfer: green 0xA2, yellow 0x20, purple other
- *   Tab..U  last opcode, A..K its frame byte 0, Z..comma its length,
- *           bit 0 leftmost
- *   Right Shift  white once any 0xA7 arrived
- */
 /*
  * Bluetooth case LED while wireless, after stock 0x6694/0x674A: the
- * channel colour (red BT1, green BT2, blue BT3) blinks fast in state 1
- * and slowly in state 2, and shows solid for a moment once the radio
- * goes quiet. Otherwise the keymap's own panel colour stays.
+ * channel colour (red BT1, green BT2, blue BT3) blinks fast while
+ * pairing (state 1), slowly while reconnecting (state 2), and shows
+ * bright for a moment once the radio goes quiet. Stock then turns it
+ * off; here it stays dim so the active slot is always visible. While
+ * wired the keymap's own panel colour stays.
  */
 static void bt_led(uint8_t led_min, uint8_t led_max) {
     if (link != LINK_WIRELESS) {
         return;
     }
-    uint16_t period;
-    if (radio_state == 1) {
-        period = K530_BT_BLINK_FAST_MS;
-    } else if (radio_state == 2) {
-        period = K530_BT_BLINK_SLOW_MS;
+    uint8_t v;
+    if (radio_state == 1 || radio_state == 2) {
+        uint16_t period = radio_state == 1 ? K530_BT_BLINK_FAST_MS : K530_BT_BLINK_SLOW_MS;
+        v               = (timer_read() % period) < period / 2 ? 255 : 0;
     } else if (connected_at && timer_elapsed(connected_at) < K530_BT_CONNECTED_SHOW_MS) {
-        period = 0;
+        v = 255;
     } else {
         connected_at = 0;
-        return;
+        v            = K530_BT_IDLE_LEVEL;
     }
-    bool on = period == 0 || (timer_read() % period) < period / 2;
-    uint8_t v = on ? 255 : 0;
     set_led(led_min, led_max, K530_BT_LED, bt_channel == 0 ? v : 0, bt_channel == 1 ? v : 0, bt_channel == 2 ? v : 0);
 }
 
@@ -868,98 +718,7 @@ bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
     if (!rgb_matrix_indicators_advanced_user(led_min, led_max)) {
         return false;
     }
-    if (!status_on) {
-        bt_led(led_min, led_max);
-        return true;
-    }
-    for (uint8_t i = led_min; i < led_max; i++) {
-        rgb_matrix_set_color(i, 0, 0, 0);
-    }
-
-    paint_level(led_min, led_max, 0, gpio_read_pin(K530_BT_MODE_PIN));
-    paint_level(led_min, led_max, 1, p1_14_high());
-    paint_level(led_min, led_max, 2, gpio_read_pin(A6));
-    paint_level(led_min, led_max, 3, usb_up());
-
-    if (link == LINK_WIRELESS) {
-        set_led(led_min, led_max, 4, 0, 0, 255);
-    } else if (link == LINK_WIRED) {
-        set_led(led_min, led_max, 4, 255, 0, 0);
-    } else {
-        set_led(led_min, led_max, 4, 255, 180, 0);
-    }
-
-    if (module_seen) {
-        switch (module_stat[1]) {
-            case 0:
-                set_led(led_min, led_max, 5, 255, 0, 0);
-                break;
-            case 1:
-                set_led(led_min, led_max, 5, 255, 180, 0);
-                break;
-            case 2:
-                set_led(led_min, led_max, 5, 0, 255, 0);
-                break;
-            default:
-                set_led(led_min, led_max, 5, 180, 0, 255);
-                break;
-        }
-        set_led(led_min, led_max, 52, 255, 255, 255);
-    }
-
-    if (pair_last == 1) {
-        set_led(led_min, led_max, 6, 0, 255, 255);
-    } else if (pair_last == 2) {
-        set_led(led_min, led_max, 6, 180, 0, 255);
-    }
-
-    if (bt_channel == 0) {
-        set_led(led_min, led_max, 7, 255, 0, 0);
-    } else if (bt_channel == 1) {
-        set_led(led_min, led_max, 7, 0, 255, 0);
-    } else {
-        set_led(led_min, led_max, 7, 0, 0, 255);
-    }
-
-    if (pair_last != 0) {
-        if (a6_clocked) {
-            set_led(led_min, led_max, 8, 0, 255, 0);
-        } else {
-            set_led(led_min, led_max, 8, 255, 0, 0);
-        }
-    }
-
-    if (module_seen && timer_elapsed(a7_seen_at) < 2000) {
-        set_led(led_min, led_max, 9, 255, 255, 255);
-    }
-
-    if (xfer_seen_at && timer_elapsed(xfer_seen_at) < 2000) {
-        set_led(led_min, led_max, 10, 255, 255, 255);
-    }
-
-    if (aa_seen_at && timer_elapsed(aa_seen_at) < 2000) {
-        set_led(led_min, led_max, 11, 0, 255, 0);
-    } else if (aa_sent_at && timer_elapsed(aa_sent_at) < 2000) {
-        set_led(led_min, led_max, 11, 255, 0, 0);
-    }
-
-    if (xfer_seen_at) {
-        switch (last_opcode) {
-            case 0xA2:
-                set_led(led_min, led_max, 12, 0, 255, 0);
-                break;
-            case 0x20:
-                set_led(led_min, led_max, 12, 255, 180, 0);
-                break;
-            default:
-                set_led(led_min, led_max, 12, 180, 0, 255);
-                break;
-        }
-    }
-
-    paint_bits(led_min, led_max, 14, last_opcode);
-    paint_bits(led_min, led_max, 29, last_rx0);
-    paint_bits(led_min, led_max, 42, last_len);
+    bt_led(led_min, led_max);
     return true;
 }
 

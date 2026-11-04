@@ -158,7 +158,7 @@ SPI0 at priority 1 fixes all of it.
 `k530_bt.c` follows the stock rules above:
 
 - **Boot:** no control frame when booting wireless.
-- **Status byte:** 0 in every frame except the debug `0xA8`.
+- **Status byte:** 0 in every frame.
 - **Key reports (`0xAA`):**
   - Layout is stock's: mods, reserved and six keys in bytes 3..10, then `0x2C` in bytes 35 and 36.
   - The overflow bitmap (bytes 11..25) stays zero, as stock leaves it with six or fewer keys down.
@@ -169,12 +169,7 @@ SPI0 at priority 1 fixes all of it.
   - Transitions send stock's `0xA5` after a zero pulse.
 - **`K530_BT_PAIR` (FN2+Esc):** a tap sends the reconnect `0xA6` (byte 3 = 2), and a 3 s hold sends the pair `0xA6` (byte 3 = 1). Both follow a zero pulse and carry the switch channel in byte 4. The 55-tick hold time has not been measured, so 3 s is an estimate.
 - **Channel switch:** a channel that differs from the last one sent for 500 ms sends the reconnect `0xA6`, as `0x56B6` does.
-- **Debug keys:**
-  - `K530_BT_STATUS` (FN2+1) toggles the status display. Its legend is above `rgb_matrix_indicators_advanced_kb` and in `FEATURES.md`.
-  - `K530_BT_RESTORE` (FN2+2) sends one `0xA8` with byte 3 = 1 and status byte 2.
-  - `K530_BT_WIRELESS` (FN2+3) sends the going-wireless `0xA5`.
-  - `K530_BT_PROBE` (FN2+4) sends a test `0xAA` frame.
-- **Console log:** with `CONSOLE_ENABLE`, the driver logs transfers to the QMK console. That build currently fails USB enumeration after the first interface, so the log is not usable yet.
+- **Bluetooth LED (62):** stock's blink pattern in the channel colour, then dim instead of off while wireless.
 
 ## Host side
 
