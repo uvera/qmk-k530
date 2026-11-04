@@ -37,6 +37,14 @@
 #define K530_BT_REPORT_STATUS 0
 #define K530_BT_REPULSE_MS 10
 #define K530_BT_REPULSE_MAX 5
+/*
+ * Pulses of one press before its release may go out. A layer-tap sends the
+ * press once and then waits inside the key handler (80 ms for Caps Lock,
+ * 0 for Escape) before the release. That wait blocks this loop, so the
+ * press is not offered again. The release has to wait until the pulses
+ * have actually happened.
+ */
+#define K530_BT_MIN_PULSES 8
 #define K530_BT_LED 62
 /* Stock blink periods for module states 1 and 2: 32 and 96 ticks of 20 ms. */
 #define K530_BT_BLINK_FAST_MS 640
@@ -81,6 +89,7 @@ static volatile uint16_t a7_seen_at; /* last 0xA7 reply */
 static uint16_t          aa_sent_at;
 static uint16_t          pulsed_at;
 static uint8_t           repulses;
+static uint8_t           down_pulses; /* ready pulses of the current key set */
 
 static volatile uint8_t hold_key;
 static volatile uint8_t need_release;
@@ -208,6 +217,9 @@ static void ready_pulse(void) {
     wait_us(100);
     gpio_write_pin_low(K530_BT_READY_PIN);
     pulsed_at = timer_read();
+    if (tx[0] == 0xAA && (tx[3] | tx[5] | tx[6] | tx[7] | tx[8] | tx[9] | tx[10]) != 0 && down_pulses < 255) {
+        down_pulses++;
+    }
 }
 
 static void copy_tx(void) {
@@ -652,8 +664,18 @@ void bluetooth_task(void) {
     pair_task();
     radio_state_task();
 
-    /* The key-up waits for the radio to read the key-down, but not forever. */
-    if (link == LINK_WIRELESS && need_release && (!hold_key || timer_elapsed(aa_sent_at) > 50) && !txn_open && !pulse_pending) {
+    /*
+     * Catch up pulses that the key handler's wait skipped, then release.
+     * A held key already pulsed on every scan, so its release is not delayed.
+     * The 50 ms cap still releases a press the radio never clocks.
+     */
+    if (link == LINK_WIRELESS && need_release && down_pulses < K530_BT_MIN_PULSES && !txn_open && !pulse_pending) {
+        if (timer_elapsed(pulsed_at) >= K530_BT_REPULSE_MS) {
+            ready_pulse();
+        }
+        return;
+    }
+    if (link == LINK_WIRELESS && need_release && down_pulses >= K530_BT_MIN_PULSES && (!hold_key || timer_elapsed(aa_sent_at) > 50) && !txn_open && !pulse_pending) {
         send_release();
         return;
     }
@@ -728,6 +750,26 @@ void bluetooth_send_keyboard(report_keyboard_t *report) {
             need_release = 1;
         }
         return;
+    }
+    /*
+     * Repeats of a held key keep down_pulses. A new key set starts again,
+     * so the release waits out its own pulses.
+     */
+    bool changed = !keys_down || report->mods != key_mods || report->reserved != key_reserved;
+    if (!changed) {
+        uint8_t nkeys = KEYBOARD_REPORT_KEYS;
+        if (nkeys > 6) {
+            nkeys = 6;
+        }
+        for (uint8_t i = 0; i < nkeys; i++) {
+            if (report->keys[i] != key_codes[i]) {
+                changed = true;
+                break;
+            }
+        }
+    }
+    if (changed) {
+        down_pulses = 0;
     }
     keys_down    = true;
     hold_key     = 1;

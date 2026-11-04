@@ -53,9 +53,14 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
   bitmap bytes 11..25 zero, 0x2C in bytes 35 and 36, checksum in byte 38.
   Filling the bitmap makes the radio send an extra report. Bluetooth
   therefore stays at six keys; a seventh is dropped.
-- **Key-up.** Always publish the empty report after a keyed one, waiting
-  at most 50 ms for the key-down to be read. Each 0xAA is re-pulsed 5
-  times, 10 ms apart; more made things worse.
+- **Key-up.** Count ready pulses of the current press. Release only after
+  8 pulses and after the radio has read it, or 50 ms after the last unread
+  publish. A layer-tap publishes the press once, then waits inside the key
+  handler (`TAP_HOLD_CAPS_DELAY` is 80 ms; Escape waits 0) before the
+  release. That wait blocks the main loop, so a wall-clock delay expires
+  with no further pulses and the release still replaces an unforwarded
+  press. The second tap works because it is a real hold, republished every
+  scan. Each idle 0xAA is still re-pulsed 5 times, 10 ms apart.
 - **No polling.** The radio pushes 0xA7 by itself; stock never polls.
 - **Host side.** BlueZ pairing fails with "No agent available" unless an
   agent runs (`bluetoothctl` with `agent on`, or `k530_pair.sh`).
