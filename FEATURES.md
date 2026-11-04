@@ -36,8 +36,8 @@ QMK lists two pins as DIP switches. They are not a Win/Mac switch and a power sw
 
 | Pin | What it is | What the keymap does with it |
 |-----|------------|------------------------------|
-| **A6** (called DIP 0) | Bluetooth slot sense line. `A7` is driven low, then high, and `A6` is sampled both times to read BT1, BT2, or BT3. | The keymap still treats this pin as Win/Mac. `A7` is left high, so slots 1 and 2 read high and slot 3 reads low. While wireless, the slot colour on LED 62 covers that. While wired, a low reading shows the OS colour in section 4. |
-| **B13** (called DIP 1) | Cable/wireless switch (P1.13). | High is cable: the battery LED uses a fixed colour, and RGB can stay on while the PC sleeps. Low is wireless: the battery LED follows the host lock lights, and RGB turns off when the PC sleeps. |
+| **A6** (called DIP 0) | Bluetooth slot sense line. `A7` is driven low, then high, and `A6` is sampled both times to read BT1, BT2, or BT3. | Nothing in the keymap. The slot colour is painted from the radio's own channel while wireless. |
+| **B13** (called DIP 1) | Cable/wireless switch (P1.13). High is cable. | Cable: the battery LED is green, and RGB can stay on while the PC sleeps. Wireless: the battery LED is white while Caps Lock is on, and RGB turns off when the PC sleeps. |
 
 ---
 
@@ -48,14 +48,14 @@ The K530 has **63 RGB LEDs**: 60 under the keys and **3 extra** used for status.
 | LED | Where it is | What it shows |
 |-----|-------------|----------------|
 | **Indicator (key LED 28)** | One of the key LEDs (e.g. above a modifier) | **Current layer**: Red = FN1, Green = FN2, Blue = FN3. On BASE it follows the normal RGB effect. With layer mask on, it still shows the layer colour. |
-| **Battery LED (61)** | On the case (battery/status) | **B13 high (cable):** fixed colour. **B13 low:** the VIA keymap shows the host lock lights. Over Bluetooth those come from the radio (see section 10). The default keymap keeps a fixed blue. |
-| **Bluetooth LED (62)** | On the case (Bluetooth) | **Wireless:** slot colour (see section 10). **Wired:** the keymap's colour for pin `A6`, including the OS colour in the next section when that pin reads low. |
+| **Battery LED (61)** | On the case (battery/status) | **Cable:** solid green. That is the plugged-in light. **Wireless:** white while Caps Lock is on, off otherwise. |
+| **Bluetooth LED (62)** | On the case (Bluetooth) | **Wireless:** slot colour (see section 10). **Wired:** the OS colour in the next section, on every slot. |
 
 ---
 
-## 4. OS detection (Bluetooth LED while wired, pin A6 low)
+## 4. OS detection (Bluetooth LED while wired)
 
-The OS colour is only visible while the keyboard is wired. While wireless, LED 62 shows the Bluetooth slot instead. The keymap shows it when pin `A6` reads low, which is Bluetooth slot 3, not a Mac/iOS switch.
+The OS colour is only visible while the keyboard is wired. While wireless, LED 62 shows the Bluetooth slot instead. The slot switch does not change the wired colour.
 
 | Detected OS | Bluetooth LED |
 |-------------|----------------|
@@ -64,7 +64,7 @@ The OS colour is only visible while the keyboard is wired. While wireless, LED 6
 | Windows | Blue |
 | macOS | Magenta |
 
-So while wired, with the slot switch on BT3, the Bluetooth LED shows which OS the keyboard thinks it is talking to.
+So while wired, the Bluetooth LED shows which OS the keyboard thinks it is talking to.
 
 ---
 
@@ -112,7 +112,7 @@ So you get a clear “preview” of which keys have an action on the layer you�
 
 - **When the PC wakes:** The firmware refreshes OS detection, may **auto-reboot once** if the OS was “unsure” at boot and becomes known after a short delay (~7 s), and updates the panel LEDs.
 - **RGB after wake:** After a short delay (e.g. 300 ms), RGB is turned back on unless the current state keeps it off.
-- **When the PC sleeps:** If **DIP 1 is OFF** (BT mode), RGB is turned off. If **DIP 1 is ON** (cable), RGB can stay on and the panel LEDs are updated.
+- **When the PC sleeps:** In the battery position, RGB is turned off. In the cable position, RGB can stay on and the panel LEDs are updated.
 
 ---
 
@@ -163,7 +163,7 @@ When wired, the LED always shows the keymap's panel colour.
 
 **Media keys.** Volume and mute go out in the same key frame, bytes 33 and 34. A media key-up clears those bytes and leaves any held letters in place. System keys (power, sleep) are not sent: the stock image queues a key frame for them but never copies the system usage into it.
 
-**Host lock lights.** The radio's status reply puts the host LED byte in its third payload byte. Stock paints only bit 1 of that byte, which is Caps Lock. The port returns the whole byte, so the battery LED can also show Num Lock and Scroll Lock when the radio sets those bits. The fifth payload byte is saved and not shown: stock compares it with 1, 2, and `0xF0` for a different lamp, which is not a battery level.
+**Host lock lights.** While wireless, the battery LED is white when Caps Lock is on. The radio's status reply puts the host LED byte in its third payload byte, and bit 1 of that byte is Caps Lock. Num Lock used to light the same LED green, which read as a cable indicator. The fifth payload byte is saved and not shown: stock compares it with 1, 2, and `0xF0` for a different lamp, which is not a battery level.
 
 **Mouse.** The same key frame carries the pointer, in the layout of the radio's HID report 5. Byte 26 is the buttons. Bytes 27–28 and 29–30 are 16-bit X and Y, least significant byte first. Byte 31 is the wheel and byte 32 is horizontal scroll. Movement is sent once so a later key does not nudge the cursor again. A held button stays until it is released. A held direction repeats the same delta, and the radio drops a frame that matches the last one, so each step flips a padding bit in the button byte.
 
@@ -184,8 +184,8 @@ On the **VIA** keymap, hold **Down**: **W A S D** move the pointer, **Space** is
 | **Reconnect Bluetooth** | Hold **Down**, tap **Esc**. |
 | **Bluetooth slot** | BT1/BT2/BT3 switch. |
 | **Indicator LED** | Shows current layer (red/green/blue); automatic. |
-| **Bluetooth LED** | Wireless: slot colour, blinking while pairing/reconnecting. Wired: keymap colour for pin `A6` (OS colour when that pin is low). |
-| **Battery LED** | B13 high: fixed colour. B13 low, VIA keymap: Caps/Num/Scroll from the host. Over Bluetooth that byte comes from the radio. |
+| **Bluetooth LED** | Wireless: slot colour, blinking while pairing/reconnecting. Wired: OS colour (cyan, yellow, blue, or magenta) on every slot. |
+| **Battery LED** | Cable: solid green. Wireless: white while Caps Lock is on. |
 | **More than six keys** | Not sent over Bluetooth. The seventh key is dropped. |
 | **Mouse, VIA keymap** | Hold **Down**. **W A S D** move, **Space** left click, **Backspace** right click. |
 

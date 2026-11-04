@@ -41,7 +41,6 @@ enum my_keycodes {
 };
 
 bool BATTERYENABLED = false;
-bool BLUETOOTHSTATE = false;
 
 bool panelLedEnable = true;
 
@@ -148,43 +147,38 @@ void restartKBBB(void) {
 os_variant_t previous_os = OS_UNSURE;
 #endif
 void panelIndicators(void) {
-    // os_variant_t os                 = detected_host_os();
-    //
-
     if (panelLedEnable == false) {
         rgb_matrix_set_color(BATTERY_LED, 0, 0, 0);
         rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 0);
         return;
     }
 
+    if (BATTERYENABLED) {
+        /* Cable. Green means plugged in, and does not follow Num Lock. */
+        rgb_matrix_set_color(BATTERY_LED, 0, 255, 0);
 #ifdef OS_DETECTION_ENABLE
-    if (BLUETOOTHSTATE == false) {
         switch (previous_os) {
-            case OS_UNSURE:
-
-                rgb_matrix_set_color(BLUETOOTH_LED, 0, 100, 100);
-                break;
             case OS_LINUX:
-
                 rgb_matrix_set_color(BLUETOOTH_LED, 255, 255, 30);
                 break;
             case OS_WINDOWS:
-
                 rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 255);
+                break;
             case OS_MACOS:
-
+            case OS_IOS:
                 rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 255);
                 break;
-            case OS_IOS:
+            default:
+                rgb_matrix_set_color(BLUETOOTH_LED, 0, 100, 100);
                 break;
         }
-    }
+#else
+        rgb_matrix_set_color(BLUETOOTH_LED, 0, 100, 100);
 #endif
-
-    if (BATTERYENABLED) {
-        rgb_matrix_set_color(BATTERY_LED, 255, 0, 255);
+    } else if (host_keyboard_led_state().caps_lock) {
+        rgb_matrix_set_color(BATTERY_LED, 255, 255, 255);
     } else {
-        rgb_matrix_set_color(BATTERY_LED, 0, 0, 255);
+        rgb_matrix_set_color(BATTERY_LED, 0, 0, 0);
     }
 }
 
@@ -227,25 +221,9 @@ void            keyboard_post_init_user(void) {
 #if defined(DIP_SWITCH_PINS) || defined(DIP_SWITCH_MATRIX_GRID)
 bool dip_switch_update_user(uint8_t index, bool active) {
     switch (index) {
-        case 0:
-            if (active) {  // Win/Android mode
-                // do stuff
-                //
-                // rgb_matrix_set_color(BLUETOOTH_LED, 0, 255, 255);
-                //
-
-                BLUETOOTHSTATE = true;
-            } else {  // Mac/iOS mode
-                // do stuff
-                BLUETOOTHSTATE = false;
-            }
-            break;
         case 1:
-            if (active) {  // Cable mode
-                BATTERYENABLED = true;
-            } else {  // BT mode
-                BATTERYENABLED = false;
-            }
+            /* P1.13 high is cable. This callback is true when the pin is low. */
+            BATTERYENABLED = !active;
             break;
     }
     panelIndicators();

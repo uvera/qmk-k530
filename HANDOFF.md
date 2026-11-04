@@ -54,7 +54,7 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
   Filling the bitmap makes the radio send an extra report. Bluetooth
   therefore stays at six keys; a seventh is dropped.
 - **Key-up.** Count ready pulses of the current press. Release only after
-  8 pulses and after the radio has read it, or 50 ms after the last unread
+  5 pulses and after the radio has read it, or 50 ms after the last unread
   publish. A layer-tap publishes the press once, then waits inside the key
   handler (`TAP_HOLD_CAPS_DELAY` is 80 ms; Escape waits 0) before the
   release. That wait blocks the main loop, so a wall-clock delay expires
@@ -73,12 +73,13 @@ Key stock addresses: LED and radio state `0x6868`, `0x674A`, `0x6694`;
   could be rebuilt if wanted.
 - **Host LED byte.** `0xA7` byte 3 (`0x200000C0`) is returned from
   `bluetooth_keyboard_leds()`. Stock `0x6572` paints only bit 1 (Caps
-  Lock) on LED `0x3F`, and clears the byte while wired. Bytes 3, 4, and
-  5 are all stored. Byte 5 (`0x200000C1`) is read at `0x65A0` for the
-  values 1, 2, and `0xF0`; that is a separate lamp, not a battery level,
-  so the battery LED is not driven from it. Caps Lock was confirmed on
-  the board. Num Lock and Scroll Lock use the same byte and were not
-  checked separately.
+  Lock). The keymap uses that bit while wireless: the battery LED is
+  white for Caps Lock and off otherwise. While wired the same LED is
+  solid green, meaning the cable switch is on. A previous VIA keymap
+  multiplied the Num Lock bit into the green channel, so a host with
+  Num Lock on looked like a green "battery" light in the cable
+  position. Byte 5 (`0x200000C1`) is read at `0x65A0` for the values
+  1, 2, and `0xF0`; that is a separate lamp, not a battery level.
 - **Mouse bytes.** `0xAA` bytes 26..32 follow the stock HID report 5: buttons, 16-bit X, 16-bit Y, 8-bit wheel, 8-bit pan. Buttons stay while held. Movement is cleared after the frame. A held direction repeats one delta, and the radio does not forward a copy of the last payload, so each step flips bit 5 of the button byte (padding in that report).
 - **Media keys.** Consumer usages are bytes 33 and 34 of an `0xAA` frame. System keys are not sent. Key frames, repeats, and deferred copies pulse ready without disabling `SPI0_IRQn`. Boot and `zero_pulse()` still reinitialize SPI.
 - Not done: battery level. System keys over BT. Mouse clicks, movement, and the wheel were confirmed on the VIA keymap.

@@ -44,7 +44,7 @@
  * press is not offered again. The release has to wait until the pulses
  * have actually happened.
  */
-#define K530_BT_MIN_PULSES 8
+#define K530_BT_MIN_PULSES 5
 #define K530_BT_LED 62
 /* Stock blink periods for module states 1 and 2: 32 and 96 ticks of 20 ms. */
 #define K530_BT_BLINK_FAST_MS 640

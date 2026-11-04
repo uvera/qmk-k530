@@ -30,8 +30,7 @@ enum my_keycodes {
     RD_PANEL_TG,
 };
 
-bool BATTERYENABLED = true;
-bool BLUETOOTHSTATE = true;
+bool BATTERYENABLED = false;
 
 bool panelLedEnable = true;
 
@@ -129,16 +128,6 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 os_variant_t previous_os = OS_UNSURE;
 #endif
-enum{
-KANA_LED = (1 << 0),
-CAPS_LED = (1 <<1),
-NUM_LED = (1<< 2),
-SCROLL_LED = (1<<3),
-COMPOSE_LED = (1<< 4)
-};
-
-unsigned char ledState = 0;
-#define LEDSTRENG 200
 #define ENABLEDELAY 300  // ms to wait until rgblight time out, 900K ms is 15min.
 
 static bool     delayedEnable = false;
@@ -214,12 +203,12 @@ void panelIndicators(void) {
         rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 0);
         return;
     }
+
+    if (BATTERYENABLED) {
+        /* Cable. Green means plugged in, and does not follow Num Lock. */
+        rgb_matrix_set_color(BATTERY_LED, 0, 255, 0);
 #ifdef OS_DETECTION_ENABLE
-    if (BLUETOOTHSTATE == false) {
         switch (previous_os) {
-            case OS_UNSURE:
-                rgb_matrix_set_color(BLUETOOTH_LED, 0, 100, 100);
-                break;
             case OS_LINUX:
                 rgb_matrix_set_color(BLUETOOTH_LED, 255, 255, 30);
                 break;
@@ -227,16 +216,21 @@ void panelIndicators(void) {
                 rgb_matrix_set_color(BLUETOOTH_LED, 0, 0, 255);
                 break;
             case OS_MACOS:
+            case OS_IOS:
                 rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 255);
                 break;
-            case OS_IOS:
+            default:
+                rgb_matrix_set_color(BLUETOOTH_LED, 0, 100, 100);
                 break;
         }
-    }
-    rgb_matrix_set_color(BLUETOOTH_LED, 255, 0, 255);
+#else
+        rgb_matrix_set_color(BLUETOOTH_LED, 0, 100, 100);
 #endif
-    short w = BATTERYENABLED ? 50 : 0;
-    rgb_matrix_set_color(BATTERY_LED, (ledState & CAPS_LED) * LEDSTRENG + w, (ledState & NUM_LED) * LEDSTRENG + w, (ledState & SCROLL_LED) * LEDSTRENG + w);
+    } else if (host_keyboard_led_state().caps_lock) {
+        rgb_matrix_set_color(BATTERY_LED, 255, 255, 255);
+    } else {
+        rgb_matrix_set_color(BATTERY_LED, 0, 0, 0);
+    }
 }
 
 void changeLayerMask(bool reverse) {
@@ -262,26 +256,6 @@ int setIndicator(uint8_t layer) {
     }
     setIndicatorLed(layer);
     return 0;
-}
-
-static void updateLedStateFromHost(led_t led_state) {
-    ledState = 0;
-    if (led_state.num_lock) {
-        ledState = NUM_LED;
-    }
-    if (led_state.scroll_lock) {
-        ledState |= SCROLL_LED;
-    }
-    if (led_state.caps_lock) {
-        ledState |= CAPS_LED;
-    }
-    if (led_state.compose) {
-        ledState |= COMPOSE_LED;
-    }
-    if (led_state.kana) {
-        ledState |= KANA_LED;
-    }
-    panelIndicators();
 }
 
 /* --- QMK hooks --- */
@@ -329,25 +303,15 @@ void housekeeping_task_user(void) {
 #if defined(DIP_SWITCH_PINS) || defined(DIP_SWITCH_MATRIX_GRID)
 bool dip_switch_update_user(uint8_t index, bool active) {
     switch (index) {
-        case 0:
-            BLUETOOTHSTATE = active;
-            break;
         case 1:
-            BATTERYENABLED = active;
+            /* P1.13 high is cable. This callback is true when the pin is low. */
+            BATTERYENABLED = !active;
             break;
     }
     panelIndicators();
     return true;
 }
 #endif
-
-bool led_update_kb(led_t led_state) {
-    bool res = led_update_user(led_state);
-    if (res) {
-        updateLedStateFromHost(led_state);
-    }
-    return res;
-}
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
