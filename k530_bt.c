@@ -223,8 +223,11 @@ static void publish_frame(void) {
     pulse_pending = 0;
     chSysUnlock();
 
+    /*
+     * SPI is initialized at boot and again inside zero_pulse(). A new key
+     * frame only pulses ready. Disabling the interrupt here shifts the frame.
+     */
     repulses = 0;
-    spi_slave_init();
     ready_pulse();
 }
 

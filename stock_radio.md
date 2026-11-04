@@ -172,7 +172,7 @@ SPI0 at priority 1 fixes all of it.
 - **`K530_BT_PAIR` (FN2+Esc):** a tap sends the reconnect `0xA6` (byte 3 = 2), and a 3 s hold sends the pair `0xA6` (byte 3 = 1). Both follow a zero pulse and carry the switch channel in byte 4. The 55-tick hold time has not been measured, so 3 s is an estimate.
 - **Channel switch:** a channel that differs from the last one sent for 500 ms sends the reconnect `0xA6`, as `0x56B6` does.
 - **Bluetooth LED (62):** stock's blink pattern in the channel colour, then dim instead of off while wireless.
-- **SPI init:** the interrupt stays enabled at priority 1. A repeat pulse and a deferred copy only pulse ready. The first pulse of a new frame, boot, and the zero pulse before `0xA5`/`0xA6` still run a full SPI init.
+- **SPI init:** the interrupt stays enabled at priority 1. Key frames, repeats, and deferred copies only pulse ready. Boot and the zero pulse before `0xA5`/`0xA6` still run a full SPI init.
 - **Host LED byte:** `0xA7` byte 3, stored by stock at `0x200000C0` and returned from `bluetooth_keyboard_leds()`. `0x6572` paints bit 1 (Caps Lock) and forces the byte to 0 while wired and `0x2000006E` has reached 10. Byte 5 (`0x200000C1`) is read at `0x65A0`: `0xF0` with P1.14 high, or 1 or 2 with P1.14 low, drives a different lamp. It is stored and not displayed.
 
 ## Host side
