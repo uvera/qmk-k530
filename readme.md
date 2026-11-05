@@ -28,6 +28,7 @@ qmk setup SonixQMK/qmk_firmware -b sn32_develop
 cd ~/qmk_firmware/keyboards/redragon
 
 git clone https://github.com/uvera/qmk-k530.git k530
+cd .. # qmk compile runs from the firmware root
 
 qmk compile -kb redragon/k530 -km via
 ```
